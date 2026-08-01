@@ -35,7 +35,7 @@ def seed_db(db: Session):
     # 2. Seed Agents
     agent_forecast = models.Agent(
         name="Forecast",
-        description="AI agent designed to handle product sales forecasts for Otezla, Maritide, Eliquis, and Dupixent",
+        description="AI agent designed to handle product sales forecasts, regional revenue, and active subscriptions",
         created_by=admin_user.id
     )
     agent_support = models.Agent(
@@ -137,9 +137,9 @@ ORDER BY total_demand DESC;
     # 5. Seed Test Cases on Version 3
     t1 = models.TestedQuestion(
         prompt_version_id=v3.id,
-        question="Show monthly demand for Otezla.",
-        expected_output="A table grouped by month detailing sum demand and avg confidence for Otezla.",
-        actual_output="Output contains month, total_demand, avg_confidence, and formatted_product=otezla. Looks correct.",
+        question="Show monthly demand for Product A.",
+        expected_output="A table grouped by month detailing sum demand and avg confidence for Product A.",
+        actual_output="Output contains month, total_demand, avg_confidence, and formatted_product=product_a. Looks correct.",
         status="PASS",
         notes="Correct chart generated on UI side."
     )
@@ -157,7 +157,7 @@ ORDER BY total_demand DESC;
     c1 = models.Comment(
         prompt_version_id=v3.id,
         author_id=manager_user.id,
-        comment="Need better SQL logic for Otezla grouping.",
+        comment="Need better SQL logic for Product A grouping.",
         created_at=datetime.datetime.utcnow() - datetime.timedelta(hours=2)
     )
     c2 = models.Comment(
