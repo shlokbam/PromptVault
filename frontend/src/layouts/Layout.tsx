@@ -49,7 +49,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   return (
     <div className="min-h-screen flex bg-background text-foreground transition-all-300">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-border bg-card flex flex-col justify-between shrink-0">
+      <aside className="w-64 border-r border-border bg-card flex flex-col justify-between shrink-0 h-screen sticky top-0">
         <div>
           {/* Logo / Brand */}
           <div className="p-6 flex items-center gap-3 border-b border-border">
