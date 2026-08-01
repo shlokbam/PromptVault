@@ -1,287 +1,108 @@
-# PromptVault - AI Prompt Versioning & Collaboration Platform
+# PromptVault - Microsoft Teams & OneDrive Synced Edition
 
-PromptVault is a full-stack web application designed to serve as a **centralized prompt management and version control system** for engineering and product teams building AI agents. 
+Welcome to **PromptVault (OneDrive & Teams Edition)**.
 
-Rather than sharing prompts through unstructured chats (like MS Teams) where revisions are lost, copy-paste bugs occur, and rollback is difficult, PromptVault brings git-like version control, side-by-side diffing, discussion threads, and automated test cases to prompt engineering.
+This is a **serverless, compliance-friendly** version of PromptVault designed for corporate environments. It does **not** require any external servers, Azure database setups, or IT approvals. 
 
----
-
-## Key Features
-
-1. **Monaco Workspace Editor**
-   - Built-in Monaco Editor with syntax highlighting (SQL, JSON, Markdown).
-   - Word count and character count.
-   - Interactive line numbers.
-   - Action controls for Copy, Download, and Fullscreen toggle.
-2. **Git-Like Revision Timeline**
-   - Every save commits a new incremental version without overwriting the past.
-   - Saves ask for a **mandatory Change Summary** (e.g., *"Added fiscal year boundaries"*) and a Release Status pill (`Draft`, `Testing`, `Production`, `Archived`).
-3. **Side-by-Side Version Diff**
-   - Powered by Monaco's native `DiffEditor` engine.
-   - Visual side-by-side matching highlighting added, deleted, or modified lines.
-4. **Preserved History Restore**
-   - Restoring a previous version *does not* overwrite history.
-   - Clicking restore on Version 3 duplicates its contents as a brand-new Version 15 with a change summary indicating *"Restored from Version 3"*.
-5. **Integrated Test Suite Manager**
-   - Add test questions, expected outcomes, and actual outcomes.
-   - Tracks success parameters: Total tests, passed, failed, and percentage success rate.
-   - Includes manual mock triggers to evaluate test states.
-6. **Collaboration Comments Thread**
-   - Discussion forum attached to each prompt version.
-   - Full timestamps and author mapping for collaboration.
-7. **Global Search**
-   - Full-text search engine matching search keywords against:
-     - Agent names and descriptions.
-     - Prompt version contents.
-     - Change summaries.
-     - Test questions and answers.
-     - Thread comments.
-8. **Audit Trail Log**
-   - Complete, immutable system activity logging.
-   - Categorizes logs by user, action type, target entity ID, and calendar timestamp.
-   - Filters search queries by action type or author.
+All your prompt data is stored in a **shared OneDrive folder** on your company laptop, and Microsoft Teams handles the authentication/embedding.
 
 ---
 
-## Tech Stack
-
-### Frontend
-- **Framework**: React 19 (TypeScript)
-- **Scaffolding/Build**: Vite 8
-- **Styling**: Tailwind CSS v4 (supporting clean dark/light mode class variables)
-- **Icons**: Lucide Icons
-- **Editor**: `@monaco-editor/react` (for the Workspace Editor and Diff View)
-- **Data Querying**: `@tanstack/react-query` & `Axios`
-
-### Backend
-- **Framework**: FastAPI (Python 3.13)
-- **Server**: Uvicorn
-- **ORM**: SQLAlchemy 2.0 (supporting interchangeable SQLite/PostgreSQL connectors)
-- **Validation**: Pydantic 2.0 (with `email-validator`)
-- **Authentication**: JWT (JSON Web Tokens) with direct `bcrypt` password hashing
-- **Testing**: `pytest` with local SQLite file-isolation fixtures
-
----
-
-## Database Schema Design
-
-PromptVault leverages a relational database schema designed for clean migrations:
+## How It Works (The Simple Version)
 
 ```mermaid
-erDiagram
-    users ||--o{ agents : creates
-    users ||--o{ prompt_versions : authors
-    users ||--o{ comments : writes
-    users ||--o{ activity_logs : triggers
-
-    agents ||--|{ prompt_types : contains
-    prompt_types ||--|{ prompt_versions : versions
-
-    prompt_versions ||--o{ tested_questions : tests
-    prompt_versions ||--o{ comments : holds
+graph TD
+    A[Bhushan's Laptop] -->|Saves Prompt| B[Local OneDrive Folder]
+    B -->|OneDrive Cloud Sync| C[OneDrive Cloud]
+    C -->|OneDrive Cloud Sync| D[Shlok's Laptop]
+    D -->|Loads Prompt| E[React App in Browser]
 ```
 
-### Table Mappings
-1. **Users** (`users`):
-   - `id` (Integer, Primary Key)
-   - `name` (String)
-   - `email` (String, Unique Index)
-   - `password_hash` (String)
-   - `role` (String: `Admin`, `Manager`, `Member`)
-   - `created_at` (DateTime)
-2. **Agents** (`agents`):
-   - `id` (Integer, Primary Key)
-   - `name` (String)
-   - `description` (String, Nullable)
-   - `created_by` (Integer, ForeignKey -> Users.id)
-   - `created_at` (DateTime)
-3. **Prompt Types** (`prompt_types`):
-   - `id` (Integer, Primary Key)
-   - `agent_id` (Integer, ForeignKey -> Agents.id)
-   - `type_name` (String: `System`, `SQL`, `Chart`, `Validation`)
-4. **Prompt Versions** (`prompt_versions`):
-   - `id` (Integer, Primary Key)
-   - `prompt_type_id` (Integer, ForeignKey -> PromptTypes.id)
-   - `version_number` (Integer)
-   - `content` (Text)
-   - `change_summary` (String)
-   - `status` (String: `Draft`, `Testing`, `Production`, `Archived`)
-   - `author_id` (Integer, ForeignKey -> Users.id)
-   - `created_at` (DateTime)
-   - `restored_from_version` (Integer, Nullable)
-5. **Tested Questions** (`tested_questions`):
-   - `id` (Integer, Primary Key)
-   - `prompt_version_id` (Integer, ForeignKey -> PromptVersions.id)
-   - `question` (Text)
-   - `expected_output` (Text)
-   - `actual_output` (Text)
-   - `status` (String: `PASS`, `FAIL`)
-   - `notes` (Text, Nullable)
-6. **Comments** (`comments`):
-   - `id` (Integer, Primary Key)
-   - `prompt_version_id` (Integer, ForeignKey -> PromptVersions.id)
-   - `author_id` (Integer, ForeignKey -> Users.id)
-   - `comment` (Text)
-   - `created_at` (DateTime)
-7. **Activity Logs** (`activity_logs`):
-   - `id` (Integer, Primary Key)
-   - `user_id` (Integer, ForeignKey -> Users.id)
-   - `action` (String)
-   - `entity_type` (String)
-   - `entity_id` (Integer, Nullable)
-   - `created_at` (DateTime)
+1. **Shared Database**: Your "database" is just a few simple text files (`.json` files) sitting inside a shared OneDrive folder on your computer.
+2. **OneDrive Sync**: When Bhushan (Manager) or Shlok (Member) edits a prompt, the web application writes the changes to their local OneDrive folder. Microsoft OneDrive automatically syncs those files to the other person's laptop in real time.
+3. **Browser File Access**: The React app runs inside your web browser (Edge, Chrome, or Safari) and uses a secure modern feature called the **File System Access API** to open and edit the OneDrive folder directly from your laptop.
+4. **Compliance Approved**: Since no data ever leaves your company's OneDrive tenant, this setup has **zero compliance issues** and is fully secure.
 
 ---
 
-## Directory Layout
+## Step 1: Getting the Code onto your Company Laptop
 
-```text
-PromptVault/
-├── backend/
-│   ├── app/
-│   │   ├── api/
-│   │   │   └── endpoints.py
-│   │   ├── core/
-│   │   │   ├── config.py
-│   │   │   └── security.py
-│   │   ├── database/
-│   │   │   └── session.py
-│   │   ├── models/
-│   │   │   └── models.py
-│   │   ├── schemas/
-│   │   │   └── schemas.py
-│   │   └── main.py
-│   ├── tests/
-│   │   └── test_api.py
-│   ├── requirements.txt
-│   └── venv/
-└── frontend/
-    ├── src/
-    │   ├── components/
-    │   ├── context/
-    │   │   └── ThemeContext.tsx
-    │   ├── layouts/
-    │   │   └── Layout.tsx
-    │   ├── pages/
-    │   │   ├── Login.tsx
-    │   │   ├── Dashboard.tsx
-    │   │   ├── AgentList.tsx
-    │   │   ├── AgentDetails.tsx
-    │   │   ├── PromptEditor.tsx
-    │   │   ├── CompareVersions.tsx
-    │   │   ├── Search.tsx
-    │   │   ├── ActivityLog.tsx
-    │   │   └── Settings.tsx
-    │   ├── services/
-    │   │   └── api.ts
-    │   ├── types/
-    │   │   └── index.ts
-    │   ├── App.tsx
-    │   ├── index.css
-    │   └── main.tsx
-    ├── vite.config.ts
-    └── package.json
-```
+To move the project from your personal laptop to your company laptop:
+
+1. **Zip the folder**: On your personal laptop, compress the `frontend` folder into a `.zip` file (do **not** include the `backend` folder or `node_modules` folder, as they are not needed for this serverless version).
+2. **Transfer the Zip**: Send the `.zip` file to your company email, share it via your corporate OneDrive, or copy it via a corporate-approved USB drive.
+3. **Extract on Company Laptop**: Unzip the folder and place it in a workspace directory (e.g., `C:\Code\PromptVault` or `/Users/username/Documents/PromptVault`).
 
 ---
 
-## API Documentation
+## Step 2: Shared OneDrive Database Setup
 
-FastAPI automatically registers interactive Swagger documentation. When the backend is running, visit:
-- **Interactive Swagger UI**: `http://localhost:8000/docs`
-- **ReDoc alternate view**: `http://localhost:8000/redoc`
+One of you (e.g., Bhushan) needs to create the shared database folder:
 
-### Major Endpoints
-
-| Category | Method | Endpoint | Description |
-|---|---|---|---|
-| **Authentication** | POST | `/api/v1/login` | Authenticate users and issue JWT |
-| | POST | `/api/v1/logout` | Terminate session activity |
-| **Users** | GET | `/api/v1/users` | List registered team members |
-| | GET | `/api/v1/users/me` | Fetch active user credentials |
-| **Agents** | GET | `/api/v1/agents` | Get all agents |
-| | POST | `/api/v1/agents` | Create agent (auto-scaffolds 4 prompt types) |
-| | PUT | `/api/v1/agents/{id}` | Update agent name/description |
-| | DELETE | `/api/v1/agents/{id}` | Permanently delete agent (Managers/Admins only) |
-| **Prompt Types** | GET | `/api/v1/agents/{id}/prompt-types` | Fetch types configured for agent |
-| | POST | `/api/v1/prompt-types` | Add custom prompt type |
-| **Prompt Versions**| GET | `/api/v1/prompt-types/{id}/versions` | List all historical versions (descending) |
-| | POST | `/api/v1/prompt-types/{id}/versions` | Commit a new prompt version |
-| | GET | `/api/v1/versions/{id}` | Retrieve specific version content |
-| | POST | `/api/v1/versions/{id}/restore` | Restore previous version (creates new version entry) |
-| | DELETE | `/api/v1/versions/{id}` | Delete prompt version (Admin only) |
-| **Comments** | GET | `/api/v1/versions/{id}/comments` | Fetch discussion comments |
-| | POST | `/api/v1/versions/{id}/comments` | Post comment to version discussion thread |
-| **Test Cases** | GET | `/api/v1/versions/{id}/tests` | Fetch test suite for version |
-| | POST | `/api/v1/versions/{id}/tests` | Append test question to suite |
-| **Global Search** | GET | `/api/v1/search?q={query}` | Global matching search engine |
-| **Audit Trails** | GET | `/api/v1/activity` | List audit logs |
-| **KPI Metrics** | GET | `/api/v1/stats` | Fetch dashboard KPI counts |
+1. Open your corporate **OneDrive** folder on your computer.
+2. Create a new folder named `PromptVault_Database`.
+3. Right-click the folder, choose **Share**, and enter the email of your team member (e.g., Shlok) with **Can Edit** permissions.
+4. Once Shlok accepts the invite, the folder will automatically sync to **both** of your computers via OneDrive.
 
 ---
 
-## Local Development Setup
+## Step 3: Running the App on your Company Laptop
 
-### 1. Backend Setup (FastAPI)
-Navigate to the `backend/` directory:
-```bash
-cd backend
-```
-
-Create a virtual environment and install packages:
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-Start the dev server:
-```bash
-PYTHONPATH=. uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-*Note: The backend lifespan automatically creates database tables and seeds initial users and sample data on its first launch.*
-
-#### Running Backend Tests
-To execute backend integration tests:
-```bash
-PYTHONPATH=. pytest
-```
+1. Open the terminal (Command Prompt on Windows, Terminal on Mac) on your company laptop.
+2. Navigate to the extracted `frontend` folder:
+   ```bash
+   cd PromptVault/frontend
+   ```
+3. Install the required libraries (only needed the first time):
+   ```bash
+   npm install
+   ```
+4. Start the application:
+   ```bash
+   npm run dev
+   ```
+5. Open your browser and go to: `http://localhost:5173`
 
 ---
 
-### 2. Frontend Setup (React/Vite)
-Navigate to the `frontend/` directory:
-```bash
-cd frontend
-```
+## Step 4: Connecting the Database (First-Time Setup)
 
-Install packages:
-```bash
-npm install
-```
+When you first open the app in your browser:
 
-Start the Vite dev server:
-```bash
-npm run dev
-```
-
-Open `http://localhost:5173/` in your browser.
+1. The app will show a welcome message: **"Connect your database folder"**.
+2. Click the **"Select OneDrive Folder"** button.
+3. A file explorer window will pop up. Navigate to your local synced OneDrive directory and select the `PromptVault_Database` folder.
+4. Click **Allow/Grant Permissions** in the browser prompt to give read/write access.
+5. The app will immediately create three files inside that folder:
+   - `agents.json`: Stores your agent groups.
+   - `prompts.json`: Stores all prompt configurations, versions, test cases, and comments.
+   - `activity.json`: Stores the log of who did what.
 
 ---
 
-## Default Seed Credentials
+## User Roles (Bhushan vs Shlok)
 
-For quick evaluation, click the quick access buttons on the Login page or use the credentials below:
+Since there is no server handling logins, the app lets you select who you are on the settings page:
 
-- **Administrator**:
-  - Email: `admin@promptvault.com`
-  - Password: `AdminPass123!`
-  - Role: `Admin` (allows deleting versions/agents)
-- **Manager**:
-  - Email: `manager@promptvault.com`
-  - Password: `ManagerPass123!`
-  - Role: `Manager` (allows modifying agents/versions)
-- **Member**:
-  - Email: `member@promptvault.com`
-  - Password: `MemberPass123!`
-  - Role: `Member` (allows creating versions and tests)
+1. **Manager (Bhushan)**:
+   * Can create new AI Agent workspaces.
+   * Can define and create new Prompt Types (e.g., *System Prompt*, *SQL Query Prompt*).
+2. **Member (Shlok)**:
+   * Can view all agents and prompt workspaces.
+   * Can edit prompts, save new prompt versions, run test cases, and add comments.
+   * Cannot create new agents or prompt types.
+
+---
+
+## Step 5: How to Embed in Microsoft Teams
+
+To access PromptVault directly inside your Microsoft Teams Channel:
+
+1. Open **Microsoft Teams** and go to your Team Channel.
+2. Click the **`+` (Add a tab)** button at the top of the channel page.
+3. Select **Website** from the list of tab apps.
+4. Enter the details:
+   - **Tab Name**: `PromptVault`
+   - **URL**: `http://localhost:5173` (or the internal URL where your frontend is hosted).
+5. Click **Save**.
+6. The dashboard will now load directly inside your Teams channel! When you click it, you can connect your shared OneDrive folder and start managing prompts.
