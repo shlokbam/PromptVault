@@ -10,12 +10,17 @@ export const AgentList: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newAgentName, setNewAgentName] = useState('');
   const [newAgentDesc, setNewAgentDesc] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
   const [createLoading, setCreateLoading] = useState(false);
+
+  // Delete confirmation states
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [agentToDelete, setAgentToDelete] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchAgents = async () => {
     try {
@@ -61,20 +66,28 @@ export const AgentList: React.FC = () => {
     }
   };
 
-  const handleDeleteAgent = async (id: number, e: React.MouseEvent) => {
+  const openDeleteConfirm = (id: number, e: React.MouseEvent) => {
     e.stopPropagation(); // Avoid navigating into details
     e.preventDefault();
+    setAgentToDelete(id);
+    setShowDeleteConfirm(true);
+    setDeleteError(null);
+  };
 
-    if (!window.confirm('Are you sure you want to delete this agent? This will permanently delete all associated prompts, versions, test cases, and comments.')) {
-      return;
-    }
-
+  const confirmDeleteAgent = async () => {
+    if (agentToDelete === null) return;
+    setDeleteLoading(true);
+    setDeleteError(null);
     try {
-      await agentService.deleteAgent(id);
+      await agentService.deleteAgent(agentToDelete);
+      setShowDeleteConfirm(false);
+      setAgentToDelete(null);
       fetchAgents();
     } catch (err: any) {
       console.error(err);
-      alert(err.response?.data?.detail || 'Failed to delete agent');
+      setDeleteError(err.response?.data?.detail || 'Failed to delete agent');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -150,7 +163,7 @@ export const AgentList: React.FC = () => {
                   
                   {isAllowedToModify && (
                     <button
-                      onClick={(e) => handleDeleteAgent(agent.id, e)}
+                      onClick={(e) => openDeleteConfirm(agent.id, e)}
                       className="p-1.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-all-300"
                       title="Delete Agent"
                     >
@@ -248,6 +261,55 @@ export const AgentList: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Custom Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-xl overflow-hidden p-6 space-y-4">
+            <div className="flex items-center gap-3 text-destructive">
+              <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-heading font-semibold text-sm text-foreground">Delete Agent Namespace</h3>
+                <p className="text-[11px] text-muted-foreground">This action is permanent and cannot be undone.</p>
+              </div>
+            </div>
+
+            {deleteError && (
+              <div className="p-3 text-xs bg-destructive/10 text-destructive border border-destructive/20 rounded-xl">
+                {deleteError}
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Are you sure you want to delete this agent? This will permanently delete all associated prompts, versions, test cases, and comments.
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setAgentToDelete(null);
+                  setDeleteError(null);
+                }}
+                disabled={deleteLoading}
+                className="px-3.5 py-2 border border-border rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted/30 transition-all-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteAgent}
+                disabled={deleteLoading}
+                className="px-3.5 py-2 bg-destructive hover:bg-red-600 text-white font-medium rounded-xl text-xs flex items-center gap-1.5 transition-all-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete namespace'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -18,13 +18,13 @@ def seed_db(db: Session):
     print("Seeding database...")
     
     # 1. Seed Users
-    admin_pw = security.get_password_hash("AdminPass123!")
-    manager_pw = security.get_password_hash("ManagerPass123!")
-    member_pw = security.get_password_hash("MemberPass123!")
+    bhushan_pw = security.get_password_hash("ManagerPass123!")
+    rahul_pw = security.get_password_hash("ManagerPass123!")
+    shlok_pw = security.get_password_hash("MemberPass123!")
 
-    admin_user = models.User(name="Shlok Bam", email="admin@promptvault.com", password_hash=admin_pw, role="Manager")
-    manager_user = models.User(name="Rahul Sharma", email="manager@promptvault.com", password_hash=manager_pw, role="Manager")
-    member_user = models.User(name="Alex Mercer", email="member@promptvault.com", password_hash=member_pw, role="Member")
+    admin_user = models.User(name="Bhushan", email="bhushan@promptvault.com", password_hash=bhushan_pw, role="Manager")
+    manager_user = models.User(name="Rahul Sharma", email="manager@promptvault.com", password_hash=rahul_pw, role="Manager")
+    member_user = models.User(name="Shlok", email="shlok@promptvault.com", password_hash=shlok_pw, role="Member")
 
     db.add_all([admin_user, manager_user, member_user])
     db.commit()

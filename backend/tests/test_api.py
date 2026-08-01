@@ -51,12 +51,12 @@ def client(db):
 def test_login(client):
     response = client.post(
         "/api/v1/login",
-        json={"email": "admin@promptvault.com", "password": "AdminPass123!"}
+        json={"email": "bhushan@promptvault.com", "password": "ManagerPass123!"}
     )
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
-    assert data["user"]["email"] == "admin@promptvault.com"
+    assert data["user"]["email"] == "bhushan@promptvault.com"
     assert data["user"]["role"] == "Manager"
 
 
@@ -64,7 +64,7 @@ def test_get_agents(client):
     # Log in first
     login_resp = client.post(
         "/api/v1/login",
-        json={"email": "admin@promptvault.com", "password": "AdminPass123!"}
+        json={"email": "bhushan@promptvault.com", "password": "ManagerPass123!"}
     )
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -79,7 +79,7 @@ def test_get_agents(client):
 def test_create_agent(client):
     login_resp = client.post(
         "/api/v1/login",
-        json={"email": "admin@promptvault.com", "password": "AdminPass123!"}
+        json={"email": "bhushan@promptvault.com", "password": "ManagerPass123!"}
     )
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -93,11 +93,23 @@ def test_create_agent(client):
     agent = response.json()
     assert agent["name"] == "New Agent"
     
-    # Confirm prompt types automatically created
+    # Confirm prompt types are initially empty
     pt_resp = client.get(f"/api/v1/agents/{agent['id']}/prompt-types", headers=headers)
     assert pt_resp.status_code == 200
     types = pt_resp.json()
-    assert len(types) == 4
-    type_names = [t["type_name"] for t in types]
-    assert "System" in type_names
-    assert "SQL" in type_names
+    assert len(types) == 0
+
+    # Create a custom prompt type
+    create_pt_resp = client.post(
+        f"/api/v1/prompt-types?agent_id={agent['id']}",
+        json={"type_name": "System Prompt"},
+        headers=headers
+    )
+    assert create_pt_resp.status_code == 200
+    new_type = create_pt_resp.json()
+    assert new_type["type_name"] == "System Prompt"
+
+    # Confirm it shows up in get prompt types
+    pt_resp2 = client.get(f"/api/v1/agents/{agent['id']}/prompt-types", headers=headers)
+    assert pt_resp2.status_code == 200
+    assert len(pt_resp2.json()) == 1

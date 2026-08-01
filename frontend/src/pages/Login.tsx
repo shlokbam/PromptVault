@@ -128,35 +128,40 @@ export const Login: React.FC = () => {
           </button>
         </form>
 
+        <div className="mt-4 text-center">
+          <span className="text-zinc-500 text-xs">Don't have an account? </span>
+          <button
+            type="button"
+            onClick={() => navigate('/register')}
+            className="text-primary hover:text-indigo-400 font-semibold text-xs transition-all-300"
+          >
+            Sign Up
+          </button>
+        </div>
+
         {/* Quick Access Seed Profiles */}
-        <div className="mt-8 pt-6 border-t border-zinc-800">
+        <div className="mt-6 pt-6 border-t border-zinc-800">
           <span className="block text-center text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-3">
             Prototype Quick Access
           </span>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <button
-              onClick={() => handleQuickLogin('admin@promptvault.com', 'AdminPass123!')}
+              type="button"
+              onClick={() => handleQuickLogin('bhushan@promptvault.com', 'ManagerPass123!')}
               disabled={loading}
               className="px-1.5 py-2 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-[10px] font-semibold rounded-xl text-zinc-300 transition-all-300 flex flex-col items-center justify-center text-center"
             >
               <span>Manager/Lead</span>
-              <span className="text-[8px] text-zinc-500 font-mono mt-0.5">Shlok</span>
+              <span className="text-[8px] text-zinc-500 font-mono mt-0.5">Bhushan</span>
             </button>
             <button
-              onClick={() => handleQuickLogin('manager@promptvault.com', 'ManagerPass123!')}
-              disabled={loading}
-              className="px-1.5 py-2 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-[10px] font-semibold rounded-xl text-zinc-300 transition-all-300 flex flex-col items-center justify-center text-center"
-            >
-              <span>Manager/Lead</span>
-              <span className="text-[8px] text-zinc-500 font-mono mt-0.5">Rahul</span>
-            </button>
-            <button
-              onClick={() => handleQuickLogin('member@promptvault.com', 'MemberPass123!')}
+              type="button"
+              onClick={() => handleQuickLogin('shlok@promptvault.com', 'MemberPass123!')}
               disabled={loading}
               className="px-1.5 py-2 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-[10px] font-semibold rounded-xl text-zinc-300 transition-all-300 flex flex-col items-center justify-center text-center"
             >
               <span>Member</span>
-              <span className="text-[8px] text-zinc-500 font-mono mt-0.5">Alex</span>
+              <span className="text-[8px] text-zinc-500 font-mono mt-0.5">Shlok</span>
             </button>
           </div>
         </div>

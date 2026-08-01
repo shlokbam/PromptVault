@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, Cpu, History, Settings, Search, 
-  LogOut, Sun, Moon, Bell, User as UserIcon, Terminal 
+  LogOut, Sun, Moon, User as UserIcon, Terminal 
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { authService } from '../services/api';
@@ -144,16 +144,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
             </button>
 
-            {/* Notifications mock */}
-            <div className="relative">
-              <button
-                className="p-2 border border-border rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-all-300"
-                aria-label="Notifications"
-              >
-                <Bell className="w-4 h-4" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary ring-2 ring-card"></span>
-              </button>
-            </div>
+
 
             {/* Quick Actions profile icon */}
             <div className="relative">

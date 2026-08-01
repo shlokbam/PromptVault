@@ -13,6 +13,7 @@ import type {
   Agent, PromptType, PromptVersion, 
   TestedQuestion, Comment, User 
 } from '../types';
+import { useToast } from '../context/ToastContext';
 
 export const PromptEditor: React.FC = () => {
   const { agentId, typeName } = useParams<{ agentId: string; typeName: string }>();
@@ -20,6 +21,7 @@ export const PromptEditor: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeVersionIdParam = searchParams.get('versionId');
   const activeTabParam = searchParams.get('tab') || 'versions';
+  const toast = useToast();
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [agent, setAgent] = useState<Agent | null>(null);
@@ -52,7 +54,7 @@ export const PromptEditor: React.FC = () => {
   // Save Modal
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [changeSummary, setChangeSummary] = useState('');
-  const [saveStatus, setSaveStatus] = useState<'Draft' | 'Testing' | 'Production' | 'Archived'>('Draft');
+  const [saveStatus, setSaveStatus] = useState<'Draft' | 'Testing' | 'Production' | 'Archived'>('Testing');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
 
@@ -60,6 +62,11 @@ export const PromptEditor: React.FC = () => {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [restoreReason, setRestoreReason] = useState('');
   const [restoreLoading, setRestoreLoading] = useState(false);
+
+  // Delete version confirmation states
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Fetch initial data
   useEffect(() => {
@@ -156,7 +163,7 @@ export const PromptEditor: React.FC = () => {
 
   const handleCopy = () => {
     navigator.clipboard.writeText(editorContent);
-    alert('Copied to clipboard!');
+    toast.success('Copied to clipboard!');
   };
 
   const handleDownload = () => {
@@ -197,7 +204,7 @@ export const PromptEditor: React.FC = () => {
       loadVersionIntoEditor(updatedVersions[0], updatedVersions[0].id);
       setSearchParams({ versionId: updatedVersions[0].id.toString() });
       
-      alert('New version saved successfully!');
+      toast.success('New version saved successfully!');
     } catch (err: any) {
       console.error(err);
       setSaveError(err.response?.data?.detail || 'Failed to save version.');
@@ -210,7 +217,7 @@ export const PromptEditor: React.FC = () => {
     e.preventDefault();
     if (!selectedVersion || !promptType) return;
     if (!restoreReason.trim()) {
-      alert('Restore reason is mandatory.');
+      toast.warning('Restore reason is mandatory.');
       return;
     }
     setRestoreLoading(true);
@@ -230,24 +237,28 @@ export const PromptEditor: React.FC = () => {
       loadVersionIntoEditor(updatedVersions[0], updatedVersions[0].id);
       setSearchParams({ versionId: updatedVersions[0].id.toString() });
 
-      alert(`Restored from Version ${selectedVersion.version_number} successfully! Created Version ${newVersion.version_number}.`);
+      toast.success(`Restored from Version ${selectedVersion.version_number} successfully! Created Version ${newVersion.version_number}.`);
     } catch (err: any) {
       console.error(err);
-      alert(err.response?.data?.detail || 'Failed to restore version.');
+      toast.error(err.response?.data?.detail || 'Failed to restore version.');
     } finally {
       setRestoreLoading(false);
     }
   };
 
-  const handleDeleteVersion = async () => {
+  const handleDeleteVersionTrigger = () => {
     if (!selectedVersion || !promptType) return;
-    if (!window.confirm(`Are you sure you want to delete Version ${selectedVersion.version_number}? This cannot be undone.`)) {
-      return;
-    }
+    setShowDeleteConfirm(true);
+    setDeleteError(null);
+  };
 
+  const confirmDeleteVersion = async () => {
+    if (!selectedVersion || !promptType) return;
+    setDeleteLoading(true);
+    setDeleteError(null);
     try {
       await versionService.deleteVersion(selectedVersion.id);
-      alert('Version deleted successfully!');
+      setShowDeleteConfirm(false);
       
       // Reload versions
       const updatedVersions = await versionService.getVersions(promptType.id);
@@ -263,7 +274,9 @@ export const PromptEditor: React.FC = () => {
       }
     } catch (err: any) {
       console.error(err);
-      alert(err.response?.data?.detail || 'Failed to delete version.');
+      setDeleteError(err.response?.data?.detail || 'Failed to delete version.');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -277,14 +290,14 @@ export const PromptEditor: React.FC = () => {
       setNewComment('');
     } catch (err) {
       console.error('Error adding comment:', err);
-      alert('Failed to add comment.');
+      toast.error('Failed to add comment.');
     }
   };
 
   const handleAddTest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!testQuestion.trim() || !testExpected.trim() || !selectedVersion) {
-      alert('Please fill in required test fields');
+      toast.warning('Please fill in required test fields');
       return;
     }
 
@@ -305,14 +318,14 @@ export const PromptEditor: React.FC = () => {
       setShowAddTest(false);
     } catch (err) {
       console.error('Error adding test case:', err);
-      alert('Failed to add test case.');
+      toast.error('Failed to add test case.');
     }
   };
 
   // Mock a "Test Runner" execution
   const handleRunTestCaseMock = async (testIndex: number) => {
     const targetTest = tests[testIndex];
-    alert(`Running test case: "${targetTest.question}"...\n\nEvaluating expected vs actual...`);
+    toast.info(`Running test case: "${targetTest.question}"...\n\nEvaluating expected vs actual...`);
     
     // Simulate updating actual output
     const updatedTests = [...tests];
@@ -469,7 +482,7 @@ export const PromptEditor: React.FC = () => {
               {/* Delete version (Manager only) */}
               {isManager && selectedVersion && (
                 <button
-                  onClick={handleDeleteVersion}
+                  onClick={handleDeleteVersionTrigger}
                   className="p-2 border border-destructive/20 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-all-300"
                   title="Delete version"
                 >
@@ -876,10 +889,8 @@ export const PromptEditor: React.FC = () => {
                   onChange={(e) => setSaveStatus(e.target.value as any)}
                   className="w-full px-3 py-2.5 border border-input rounded-xl bg-muted/20 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all-300"
                 >
-                  <option value="Draft">Draft</option>
                   <option value="Testing">Testing</option>
                   <option value="Production">Production</option>
-                  <option value="Archived">Archived</option>
                 </select>
               </div>
 
@@ -952,6 +963,54 @@ export const PromptEditor: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Custom Delete Version Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-xl overflow-hidden p-6 space-y-4">
+            <div className="flex items-center gap-3 text-destructive">
+              <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-heading font-semibold text-sm text-foreground">Delete Prompt Version</h3>
+                <p className="text-[11px] text-muted-foreground">This action is permanent and cannot be undone.</p>
+              </div>
+            </div>
+
+            {deleteError && (
+              <div className="p-3 text-xs bg-destructive/10 text-destructive border border-destructive/20 rounded-xl">
+                {deleteError}
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Are you sure you want to delete Version {selectedVersion?.version_number}? This will permanently delete this specific version from the registry history.
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteError(null);
+                }}
+                disabled={deleteLoading}
+                className="px-3.5 py-2 border border-border rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted/30 transition-all-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteVersion}
+                disabled={deleteLoading}
+                className="px-3.5 py-2 bg-destructive hover:bg-red-600 text-white font-medium rounded-xl text-xs flex items-center gap-1.5 transition-all-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete version'}
+              </button>
+            </div>
           </div>
         </div>
       )}

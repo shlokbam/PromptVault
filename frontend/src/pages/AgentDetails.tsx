@@ -5,7 +5,7 @@ import {
   ChevronRight, Calendar, User as UserIcon
 } from 'lucide-react';
 import { agentService, versionService, authService } from '../services/api';
-import type { Agent, PromptType, PromptVersion } from '../types';
+import type { Agent, PromptType, PromptVersion, User } from '../types';
 
 export const AgentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +14,35 @@ export const AgentDetails: React.FC = () => {
   const [promptTypes, setPromptTypes] = useState<PromptType[]>([]);
   const [typeVersions, setTypeVersions] = useState<Record<number, PromptVersion | null>>({});
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // Modal states for creating a new prompt type
+  const [showModal, setShowModal] = useState(false);
+  const [newTypeName, setNewTypeName] = useState('');
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const handleCreatePromptTypeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTypeName.trim() || !id) return;
+    setCreateLoading(true);
+    setCreateError(null);
+
+    try {
+      await agentService.createPromptType(parseInt(id), newTypeName.trim());
+      setNewTypeName('');
+      setShowModal(false);
+      
+      // Reload prompt types
+      const types = await agentService.getPromptTypes(parseInt(id));
+      setPromptTypes(types);
+    } catch (err: any) {
+      console.error(err);
+      setCreateError(err.response?.data?.detail || 'Failed to create prompt type.');
+    } finally {
+      setCreateLoading(false);
+    }
+  };
 
   useEffect(() => {
     const user = authService.getCurrentUser();
@@ -21,6 +50,7 @@ export const AgentDetails: React.FC = () => {
       navigate('/login');
       return;
     }
+    setCurrentUser(user);
 
     const fetchAgentDetails = async () => {
       if (!id) return;
@@ -114,14 +144,47 @@ export const AgentDetails: React.FC = () => {
 
       {/* Prompt Types Grid */}
       <div className="space-y-4">
-        <div>
-          <h2 className="text-lg font-heading font-bold tracking-tight">Prompt Types</h2>
-          <p className="text-muted-foreground text-xs">
-            Configure, version, and manage parameters for distinct components of the {agent.name} system.
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-heading font-bold tracking-tight">Prompt Types</h2>
+            <p className="text-muted-foreground text-xs">
+              Configure, version, and manage parameters for distinct components of the {agent.name} system.
+            </p>
+          </div>
+          {currentUser?.role === 'Manager' && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="px-3.5 py-1.5 bg-primary hover:bg-indigo-600 text-white font-medium rounded-xl text-xs transition-all-300 shadow-sm"
+            >
+              Create Prompt Type
+            </button>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {promptTypes.length === 0 ? (
+          <div className="bg-card border border-border border-dashed rounded-2xl p-10 flex flex-col items-center justify-center text-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground">
+              <FileCode className="w-6 h-6" />
+            </div>
+            <div className="space-y-1 max-w-sm">
+              <h3 className="font-semibold text-sm text-foreground">No prompt types configured</h3>
+              <p className="text-xs text-muted-foreground">
+                {currentUser?.role === 'Manager'
+                  ? "Create custom prompt categories (e.g. 'System Prompt', 'SQL Prompt', 'Chain of Thought') to start version control."
+                  : "Please contact your Team Lead (Manager) to create custom prompt types for this agent workspace."}
+              </p>
+            </div>
+            {currentUser?.role === 'Manager' && (
+              <button
+                onClick={() => setShowModal(true)}
+                className="px-4 py-2 bg-primary hover:bg-indigo-600 text-white font-medium rounded-xl text-xs transition-all-300 shadow-sm"
+              >
+                Create Prompt Type
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {promptTypes.map((pt) => {
             const latest = typeVersions[pt.id];
             
@@ -198,7 +261,68 @@ export const AgentDetails: React.FC = () => {
             );
           })}
         </div>
+        )}
       </div>
+
+      {/* Create Prompt Type Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-xl overflow-hidden p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <FileCode className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-heading font-semibold text-sm text-foreground">Create Prompt Type</h3>
+                <p className="text-[11px] text-muted-foreground">Add a new prompt component category to this Agent namespace.</p>
+              </div>
+            </div>
+
+            {createError && (
+              <div className="p-3 text-xs bg-destructive/10 text-destructive border border-destructive/20 rounded-xl">
+                {createError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreatePromptTypeSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Prompt Type Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. System Prompt, SQL Query Prompt, Validation Schema"
+                  value={newTypeName}
+                  onChange={(e) => setNewTypeName(e.target.value)}
+                  required
+                  className="w-full px-3.5 py-2 bg-background border border-border rounded-xl text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all-300"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModal(false);
+                    setNewTypeName('');
+                    setCreateError(null);
+                  }}
+                  className="px-3.5 py-2 border border-border rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted/30 transition-all-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={createLoading}
+                  className="px-3.5 py-2 bg-primary hover:bg-indigo-600 text-white font-medium rounded-xl text-xs flex items-center gap-1.5 transition-all-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                >
+                  {createLoading ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

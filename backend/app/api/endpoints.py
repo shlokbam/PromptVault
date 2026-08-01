@@ -79,6 +79,43 @@ def logout(current_user: models.User = Depends(get_current_user), db: Session = 
     log_activity(db, current_user.id, "Logged out", "User", current_user.id)
     return {"message": "Successfully logged out"}
 
+@router.post("/register", response_model=schemas.UserResponse)
+def register_user(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
+    # Check if duplicate email
+    existing = db.query(models.User).filter(models.User.email == user_in.email).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is already registered",
+        )
+    
+    # Validate role
+    role_lower = user_in.role.lower()
+    if role_lower not in ["manager", "member"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid role. Role must be 'Manager' or 'Member'.",
+        )
+    
+    # Map back to proper casing
+    proper_role = "Manager" if role_lower == "manager" else "Member"
+
+    # Create user
+    pw_hash = security.get_password_hash(user_in.password)
+    user = models.User(
+        name=user_in.name,
+        email=user_in.email,
+        password_hash=pw_hash,
+        role=proper_role
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    # Log action
+    log_activity(db, user.id, f"Registered new account as {proper_role}", "User", user.id)
+    return user
+
 
 # =====================================================================
 # USERS ENDPOINTS
@@ -91,6 +128,22 @@ def get_users(current_user: models.User = Depends(get_current_user), db: Session
 @router.get("/users/me", response_model=schemas.UserResponse)
 def get_current_user_info(current_user: models.User = Depends(get_current_user)):
     return current_user
+
+@router.post("/users/change-password")
+def change_password(data: schemas.UserChangePassword, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Verify old password
+    if not security.verify_password(data.old_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect current password",
+        )
+    
+    # Update password
+    current_user.password_hash = security.get_password_hash(data.new_password)
+    db.commit()
+    
+    log_activity(db, current_user.id, "Changed password", "User", current_user.id)
+    return {"message": "Password changed successfully"}
 
 
 # =====================================================================
@@ -130,14 +183,6 @@ def create_agent(agent_in: schemas.AgentCreate, current_user: models.User = Depe
     db.commit()
     db.refresh(agent)
     
-    # Auto-create default prompt types for this agent (System, SQL, Chart, Validation)
-    default_types = ["System", "SQL", "Chart", "Validation"]
-    for type_name in default_types:
-        prompt_type = models.PromptType(agent_id=agent.id, type_name=type_name)
-        db.add(prompt_type)
-    db.commit()
-    db.refresh(agent)
-
     # Log action
     log_activity(db, current_user.id, f"Created Agent '{agent.name}'", "Agent", agent.id)
 

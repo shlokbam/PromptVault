@@ -49,6 +49,14 @@ export const authService = {
     localStorage.setItem('user', JSON.stringify(response.data.user));
     return response.data;
   },
+  async register(name: string, email: string, role: 'Manager' | 'Member', password: string) {
+    const response = await api.post<User>('/register', { name, email, role, password });
+    return response.data;
+  },
+  async changePassword(oldPassword: string, newPassword: string) {
+    const response = await api.post('/users/change-password', { old_password: oldPassword, new_password: newPassword });
+    return response.data;
+  },
   logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -78,6 +86,10 @@ export const agentService = {
   },
   async getPromptTypes(agentId: number) {
     const response = await api.get<PromptType[]>(`/agents/${agentId}/prompt-types`);
+    return response.data;
+  },
+  async createPromptType(agentId: number, typeName: string) {
+    const response = await api.post<PromptType>('/prompt-types', { type_name: typeName }, { params: { agent_id: agentId } });
     return response.data;
   }
 };

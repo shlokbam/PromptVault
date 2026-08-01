@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Cpu, FileCode, GitFork, Sparkles, TrendingUp, 
-  ArrowRight, Activity, Calendar, Plus 
+  ArrowRight, Activity, Calendar 
 } from 'lucide-react';
 import { systemService, authService } from '../services/api';
 import type { DashboardStats, ActivityLog, User } from '../types';
@@ -75,7 +75,6 @@ export const Dashboard: React.FC = () => {
           to="/agents"
           className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-indigo-600 text-white rounded-xl text-xs font-semibold shadow-md shadow-primary/10 transition-all-300 hover:scale-[1.02]"
         >
-          <Plus className="w-4 h-4" />
           View Agents
         </Link>
       </div>
