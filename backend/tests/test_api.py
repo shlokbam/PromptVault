@@ -57,7 +57,7 @@ def test_login(client):
     data = response.json()
     assert "access_token" in data
     assert data["user"]["email"] == "admin@promptvault.com"
-    assert data["user"]["role"] == "Admin"
+    assert data["user"]["role"] == "Manager"
 
 
 def test_get_agents(client):

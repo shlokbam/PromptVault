@@ -67,11 +67,9 @@ export const Settings: React.FC = () => {
               </div>
               <h4 className="font-bold text-sm text-foreground">{currentUser?.name}</h4>
               <span className={`text-[9px] px-2 py-0.5 rounded-full font-mono font-semibold uppercase ${
-                currentUser?.role === 'Admin' 
-                  ? 'bg-red-500/10 text-red-500 border border-red-500/20' 
-                  : currentUser?.role === 'Manager' 
-                    ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
-                    : 'bg-green-500/10 text-green-500 border border-green-500/20'
+                currentUser?.role === 'Manager' 
+                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
+                  : 'bg-green-500/10 text-green-500 border border-green-500/20'
               }`}>
                 {currentUser?.role} Account
               </span>
@@ -128,11 +126,9 @@ export const Settings: React.FC = () => {
                   </div>
                   
                   <span className={`text-[9px] px-2 py-0.5 rounded-full font-mono font-semibold uppercase ${
-                    user.role === 'Admin' 
-                      ? 'bg-red-500/10 text-red-500' 
-                      : user.role === 'Manager' 
-                        ? 'bg-amber-500/10 text-amber-500' 
-                        : 'bg-green-500/10 text-green-500'
+                    user.role === 'Manager' 
+                      ? 'bg-amber-500/10 text-amber-500' 
+                      : 'bg-green-500/10 text-green-500'
                   }`}>
                     {user.role}
                   </span>

@@ -341,7 +341,7 @@ export const PromptEditor: React.FC = () => {
     editorRef.current = editor;
   };
 
-  const isAdmin = currentUser?.role === 'Admin';
+  const isManager = currentUser?.role === 'Manager';
 
   return (
     <div className={`space-y-6 font-sans ${isFullScreen ? 'fixed inset-0 bg-background z-50 p-6' : 'max-w-7xl mx-auto'}`}>
@@ -466,8 +466,8 @@ export const PromptEditor: React.FC = () => {
                 {isFullScreen ? 'Window' : 'Fullscreen'}
               </button>
 
-              {/* Delete version (Admin only) */}
-              {isAdmin && selectedVersion && (
+              {/* Delete version (Manager only) */}
+              {isManager && selectedVersion && (
                 <button
                   onClick={handleDeleteVersion}
                   className="p-2 border border-destructive/20 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-all-300"

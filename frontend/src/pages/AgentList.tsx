@@ -87,7 +87,7 @@ export const AgentList: React.FC = () => {
     );
   }
 
-  const isAllowedToModify = currentUser?.role === 'Admin' || currentUser?.role === 'Manager';
+  const isAllowedToModify = currentUser?.role === 'Manager';
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto font-sans">

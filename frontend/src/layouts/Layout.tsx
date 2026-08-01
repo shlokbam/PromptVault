@@ -99,11 +99,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <span className="block text-[10px] text-muted-foreground truncate">{currentUser.email}</span>
             </div>
             <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-semibold uppercase ${
-              currentUser.role === 'Admin' 
-                ? 'bg-red-500/10 text-red-500 border border-red-500/20' 
-                : currentUser.role === 'Manager' 
-                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
-                  : 'bg-green-500/10 text-green-500 border border-green-500/20'
+              currentUser.role === 'Manager' 
+                ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
+                : 'bg-green-500/10 text-green-500 border border-green-500/20'
             }`}>
               {currentUser.role}
             </span>

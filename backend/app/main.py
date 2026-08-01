@@ -22,7 +22,7 @@ def seed_db(db: Session):
     manager_pw = security.get_password_hash("ManagerPass123!")
     member_pw = security.get_password_hash("MemberPass123!")
 
-    admin_user = models.User(name="Shlok Bam", email="admin@promptvault.com", password_hash=admin_pw, role="Admin")
+    admin_user = models.User(name="Shlok Bam", email="admin@promptvault.com", password_hash=admin_pw, role="Manager")
     manager_user = models.User(name="Rahul Sharma", email="manager@promptvault.com", password_hash=manager_pw, role="Manager")
     member_user = models.User(name="Alex Mercer", email="member@promptvault.com", password_hash=member_pw, role="Member")
 

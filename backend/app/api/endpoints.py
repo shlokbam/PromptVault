@@ -43,18 +43,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 # Helper to verify role permission
-def verify_admin_role(user: models.User):
-    if user.role.lower() != "admin":
+def verify_manager_role(user: models.User):
+    if user.role.lower() != "manager":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only Admins are authorized to perform this operation",
-        )
-
-def verify_manager_or_admin_role(user: models.User):
-    if user.role.lower() not in ["admin", "manager"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only Managers and Admins are authorized to perform this operation",
+            detail="Only Managers (Team Leads) are authorized to perform this operation",
         )
 
 
@@ -124,6 +117,9 @@ def get_agents(current_user: models.User = Depends(get_current_user), db: Sessio
 
 @router.post("/agents", response_model=schemas.AgentResponse)
 def create_agent(agent_in: schemas.AgentCreate, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Creation is Manager only
+    verify_manager_role(current_user)
+    
     # Create the agent
     agent = models.Agent(
         name=agent_in.name,
@@ -156,6 +152,9 @@ def create_agent(agent_in: schemas.AgentCreate, current_user: models.User = Depe
 
 @router.put("/agents/{id}", response_model=schemas.AgentResponse)
 def update_agent(id: int, agent_in: schemas.AgentUpdate, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Editing is Manager only
+    verify_manager_role(current_user)
+    
     agent = db.query(models.Agent).filter(models.Agent.id == id).first()
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -181,8 +180,8 @@ def update_agent(id: int, agent_in: schemas.AgentUpdate, current_user: models.Us
 
 @router.delete("/agents/{id}")
 def delete_agent(id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Deleting an agent requires Manager/Admin privilege
-    verify_manager_or_admin_role(current_user)
+    # Deleting an agent requires Manager privilege
+    verify_manager_role(current_user)
     
     agent = db.query(models.Agent).filter(models.Agent.id == id).first()
     if not agent:
@@ -208,6 +207,9 @@ def get_agent_prompt_types(id: int, current_user: models.User = Depends(get_curr
 
 @router.post("/prompt-types", response_model=schemas.PromptTypeResponse)
 def create_custom_prompt_type(prompt_type_in: schemas.PromptTypeBase, agent_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Prompt type creation is Manager only
+    verify_manager_role(current_user)
+    
     # Verify that agent exists
     agent = db.query(models.Agent).filter(models.Agent.id == agent_id).first()
     if not agent:
@@ -385,8 +387,8 @@ def restore_prompt_version(id: int, restore_in: schemas.PromptVersionRestore, cu
 
 @router.delete("/versions/{id}")
 def delete_prompt_version(id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Deleting is Admin only
-    verify_admin_role(current_user)
+    # Deleting is Manager only
+    verify_manager_role(current_user)
 
     v = db.query(models.PromptVersion).filter(models.PromptVersion.id == id).first()
     if not v:
