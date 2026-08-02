@@ -148,21 +148,21 @@ export const Login: React.FC = () => {
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => handleQuickLogin('bhushan@promptvault.com', 'ManagerPass123!')}
+              onClick={() => handleQuickLogin('admin@promptvault.com', 'ManagerPass123!')}
               disabled={loading}
               className="px-1.5 py-2 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-[10px] font-semibold rounded-xl text-zinc-300 transition-all-300 flex flex-col items-center justify-center text-center"
             >
               <span>Manager/Lead</span>
-              <span className="text-[8px] text-zinc-500 font-mono mt-0.5">Bhushan</span>
+              <span className="text-[8px] text-zinc-500 font-mono mt-0.5">Alex</span>
             </button>
             <button
               type="button"
-              onClick={() => handleQuickLogin('shlok@promptvault.com', 'MemberPass123!')}
+              onClick={() => handleQuickLogin('member@promptvault.com', 'MemberPass123!')}
               disabled={loading}
               className="px-1.5 py-2 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-[10px] font-semibold rounded-xl text-zinc-300 transition-all-300 flex flex-col items-center justify-center text-center"
             >
               <span>Member</span>
-              <span className="text-[8px] text-zinc-500 font-mono mt-0.5">Shlok</span>
+              <span className="text-[8px] text-zinc-500 font-mono mt-0.5">Jordan</span>
             </button>
           </div>
         </div>

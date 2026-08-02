@@ -51,12 +51,12 @@ def client(db):
 def test_login(client):
     response = client.post(
         "/api/v1/login",
-        json={"email": "bhushan@promptvault.com", "password": "ManagerPass123!"}
+        json={"email": "admin@promptvault.com", "password": "ManagerPass123!"}
     )
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
-    assert data["user"]["email"] == "bhushan@promptvault.com"
+    assert data["user"]["email"] == "admin@promptvault.com"
     assert data["user"]["role"] == "Manager"
 
 
@@ -64,7 +64,7 @@ def test_get_agents(client):
     # Log in first
     login_resp = client.post(
         "/api/v1/login",
-        json={"email": "bhushan@promptvault.com", "password": "ManagerPass123!"}
+        json={"email": "admin@promptvault.com", "password": "ManagerPass123!"}
     )
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -79,7 +79,7 @@ def test_get_agents(client):
 def test_create_agent(client):
     login_resp = client.post(
         "/api/v1/login",
-        json={"email": "bhushan@promptvault.com", "password": "ManagerPass123!"}
+        json={"email": "admin@promptvault.com", "password": "ManagerPass123!"}
     )
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -119,7 +119,7 @@ def test_delete_prompt_type(client):
     # Log in
     login_resp = client.post(
         "/api/v1/login",
-        json={"email": "bhushan@promptvault.com", "password": "ManagerPass123!"}
+        json={"email": "admin@promptvault.com", "password": "ManagerPass123!"}
     )
     token = login_resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}

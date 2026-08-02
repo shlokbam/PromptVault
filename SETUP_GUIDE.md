@@ -107,8 +107,8 @@ Microsoft Teams requires all custom tabs to use **HTTPS**. The frontend has been
    > * You only need to do this once. If you do not do this step, Microsoft Teams will show a blank white screen when trying to load the tab.
 
 4. The login screen will appear. You can now log in using the pre-seeded prototype accounts:
-   * **Manager / Lead Account**: `bhushan@promptvault.com` with password `ManagerPass123!`
-   * **Member Account**: `shlok@promptvault.com` with password `MemberPass123!`
+    * **Manager / Lead Account**: `admin@promptvault.com` with password `ManagerPass123!`
+    * **Member Account**: `member@promptvault.com` with password `MemberPass123!`
 
 ---
 

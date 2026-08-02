@@ -7,7 +7,7 @@ This is the React client application for **PromptVault**, scaffolded with **Vite
 ## Technical Stack & Configuration
 
 - **Core Framework**: React 19 (using strict TypeScript typing)
-- **Styling**: Tailwind CSS v4. Configured directly in [index.css](file:///Users/shlokbam/Documents/Code/PromptVault/frontend/src/index.css) using HSL variables to support a Vercel-like responsive dark/light mode toggle.
+- **Styling**: Tailwind CSS v4. Configured directly in [index.css](src/index.css) using HSL variables to support a Vercel-like responsive dark/light mode toggle.
 - **Icons**: Lucide Icons
 - **Code Editor**: `@monaco-editor/react` (implements custom syntax highlighting, line numbers, word count, character count, copy, download, and fullscreen capabilities).
 - **Revision Comparisons**: Monaco's native `DiffEditor` engine for split-screen highlight differences.

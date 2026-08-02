@@ -91,7 +91,7 @@ export const ActivityLog: React.FC = () => {
           />
           <input
             type="text"
-            placeholder="Filter by user (e.g. 'Shlok', 'Rahul')"
+            placeholder="Filter by user (e.g. 'Alex', 'Taylor')"
             value={userFilter}
             onChange={(e) => setUserFilter(e.target.value)}
             className="w-full px-3 py-2 border border-input rounded-xl bg-muted/20 text-xs focus:outline-none focus:ring-1 focus:ring-primary transition-all-300"
