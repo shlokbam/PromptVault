@@ -16,21 +16,21 @@ Unlike standard applications that require complex database server deployments (w
 
 ```mermaid
 graph TD
-    subgraph Workstation A (Lead)
-        UA[Lead User] -->|Edits Prompt| UI1[React UI / Teams Tab]
-        UI1 -->|Saves Data| BE1[Local FastAPI Backend]
-        BE1 -->|Writes SQLite DB| LF1[Local Synced OneDrive Folder]
+    subgraph WorkstationA ["Workstation A (Lead)"]
+        UA["Lead User"] -->|Edits Prompt| UI1["React UI / Teams Tab"]
+        UI1 -->|Saves Data| BE1["Local FastAPI Backend"]
+        BE1 -->|Writes SQLite DB| LF1["Local Synced OneDrive Folder"]
     end
 
-    subgraph Corporate Cloud Sync
-        LF1 <==>|OneDrive Engine Sync| OC[OneDrive Cloud Folder]
-        OC <==>|OneDrive Engine Sync| LF2[Local Synced OneDrive Folder]
+    subgraph CorporateSync ["Corporate Cloud Sync"]
+        LF1 <-->|OneDrive Engine Sync| OC["OneDrive Cloud Folder"]
+        OC <-->|OneDrive Engine Sync| LF2["Local Synced OneDrive Folder"]
     end
 
-    subgraph Workstation B (Member)
-        LF2 -->|Loads SQLite DB| BE2[Local FastAPI Backend]
-        BE2 -->|Fetches Data| UI2[React UI / Teams Tab]
-        UI2 -->|Reads Updates| UB[Member User]
+    subgraph WorkstationB ["Workstation B (Member)"]
+        LF2 -->|Loads SQLite DB| BE2["Local FastAPI Backend"]
+        BE2 -->|Fetches Data| UI2["React UI / Teams Tab"]
+        UI2 -->|Reads Updates| UB["Member User"]
     end
 ```
 
