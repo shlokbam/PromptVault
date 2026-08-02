@@ -4,6 +4,7 @@ import { DiffEditor } from '@monaco-editor/react';
 import { ArrowLeft, GitCompare, Calendar, User as UserIcon } from 'lucide-react';
 import { agentService, versionService, authService } from '../services/api';
 import type { Agent, PromptVersion } from '../types';
+import { parseUTCDate } from '../utils/date';
 
 export const CompareVersions: React.FC = () => {
   const { agentId, typeName } = useParams<{ agentId: string; typeName: string }>();
@@ -182,7 +183,7 @@ export const CompareVersions: React.FC = () => {
           <p><span className="text-muted-foreground">Change Summary:</span> <strong className="text-foreground">{v1Obj?.change_summary || 'None'}</strong></p>
           <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-1">
             <span className="flex items-center gap-1"><UserIcon className="w-3 h-3" /> Author: {v1Obj?.author_name}</span>
-            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Date: {v1Obj && new Date(v1Obj.created_at).toLocaleDateString([], { day: 'numeric', month: 'short' })}</span>
+            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Date: {v1Obj && parseUTCDate(v1Obj.created_at).toLocaleDateString([], { day: 'numeric', month: 'short' })}</span>
           </div>
         </div>
 
@@ -195,7 +196,7 @@ export const CompareVersions: React.FC = () => {
           <p><span className="text-muted-foreground">Change Summary:</span> <strong className="text-foreground">{v2Obj?.change_summary || 'None'}</strong></p>
           <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-1">
             <span className="flex items-center gap-1"><UserIcon className="w-3 h-3" /> Author: {v2Obj?.author_name}</span>
-            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Date: {v2Obj && new Date(v2Obj.created_at).toLocaleDateString([], { day: 'numeric', month: 'short' })}</span>
+            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Date: {v2Obj && parseUTCDate(v2Obj.created_at).toLocaleDateString([], { day: 'numeric', month: 'short' })}</span>
           </div>
         </div>
       </div>

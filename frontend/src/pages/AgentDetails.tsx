@@ -2,10 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, Cpu, FileCode, 
-  ChevronRight, Calendar, User as UserIcon
+  ChevronRight, Calendar, User as UserIcon,
+  Trash2, ShieldAlert
 } from 'lucide-react';
 import { agentService, versionService, authService } from '../services/api';
 import type { Agent, PromptType, PromptVersion, User } from '../types';
+import { parseUTCDate } from '../utils/date';
+import { useToast } from '../context/ToastContext';
 
 export const AgentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -15,12 +18,55 @@ export const AgentDetails: React.FC = () => {
   const [typeVersions, setTypeVersions] = useState<Record<number, PromptVersion | null>>({});
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const toast = useToast();
 
   // Modal states for creating a new prompt type
   const [showModal, setShowModal] = useState(false);
   const [newTypeName, setNewTypeName] = useState('');
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  // Delete prompt type states
+  const [showDeleteTypeConfirm, setShowDeleteTypeConfirm] = useState(false);
+  const [typeToDelete, setTypeToDelete] = useState<PromptType | null>(null);
+  const [deleteTypeError, setDeleteTypeError] = useState<string | null>(null);
+  const [deleteTypeLoading, setDeleteTypeLoading] = useState(false);
+
+  const fetchAgentDetails = async () => {
+    if (!id) return;
+    try {
+      const agentId = parseInt(id);
+      const agentData = await agentService.getAgents();
+      const activeAgent = agentData.find(a => a.id === agentId);
+      
+      if (!activeAgent) {
+        navigate('/agents');
+        return;
+      }
+      setAgent(activeAgent);
+
+      const types = await agentService.getPromptTypes(agentId);
+      setPromptTypes(types);
+
+      // Fetch latest version for each type
+      const versionsMap: Record<number, PromptVersion | null> = {};
+      for (const pt of types) {
+        try {
+          const versions = await versionService.getVersions(pt.id);
+          // Sort to find latest (versions from API are sorted desc already)
+          versionsMap[pt.id] = versions.length > 0 ? versions[0] : null;
+        } catch (e) {
+          console.error(`Error loading versions for type ${pt.id}`, e);
+          versionsMap[pt.id] = null;
+        }
+      }
+      setTypeVersions(versionsMap);
+    } catch (err) {
+      console.error('Error fetching agent details:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCreatePromptTypeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,13 +80,37 @@ export const AgentDetails: React.FC = () => {
       setShowModal(false);
       
       // Reload prompt types
-      const types = await agentService.getPromptTypes(parseInt(id));
-      setPromptTypes(types);
+      await fetchAgentDetails();
+      toast.success('Prompt type created successfully.');
     } catch (err: any) {
       console.error(err);
       setCreateError(err.response?.data?.detail || 'Failed to create prompt type.');
     } finally {
       setCreateLoading(false);
+    }
+  };
+
+  const handleDeletePromptTypeClick = (pt: PromptType) => {
+    setTypeToDelete(pt);
+    setDeleteTypeError(null);
+    setShowDeleteTypeConfirm(true);
+  };
+
+  const handleConfirmDeleteType = async () => {
+    if (!typeToDelete) return;
+    setDeleteTypeLoading(true);
+    setDeleteTypeError(null);
+    try {
+      await agentService.deletePromptType(typeToDelete.id);
+      toast.success(`Prompt type '${typeToDelete.type_name}' deleted successfully.`);
+      setShowDeleteTypeConfirm(false);
+      setTypeToDelete(null);
+      await fetchAgentDetails();
+    } catch (err: any) {
+      console.error(err);
+      setDeleteTypeError(err.response?.data?.detail || 'Failed to delete prompt type.');
+    } finally {
+      setDeleteTypeLoading(false);
     }
   };
 
@@ -51,43 +121,6 @@ export const AgentDetails: React.FC = () => {
       return;
     }
     setCurrentUser(user);
-
-    const fetchAgentDetails = async () => {
-      if (!id) return;
-      try {
-        const agentId = parseInt(id);
-        const agentData = await agentService.getAgents();
-        const activeAgent = agentData.find(a => a.id === agentId);
-        
-        if (!activeAgent) {
-          navigate('/agents');
-          return;
-        }
-        setAgent(activeAgent);
-
-        const types = await agentService.getPromptTypes(agentId);
-        setPromptTypes(types);
-
-        // Fetch latest version for each type
-        const versionsMap: Record<number, PromptVersion | null> = {};
-        for (const pt of types) {
-          try {
-            const versions = await versionService.getVersions(pt.id);
-            // Sort to find latest (versions from API are sorted desc already)
-            versionsMap[pt.id] = versions.length > 0 ? versions[0] : null;
-          } catch (e) {
-            console.error(`Error loading versions for type ${pt.id}`, e);
-            versionsMap[pt.id] = null;
-          }
-        }
-        setTypeVersions(versionsMap);
-      } catch (err) {
-        console.error('Error fetching agent details:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchAgentDetails();
   }, [id, navigate]);
 
@@ -137,7 +170,7 @@ export const AgentDetails: React.FC = () => {
           </div>
           <div className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-            <span>Created: {new Date(agent.created_at).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            <span>Created: {new Date(parseUTCDate(agent.created_at)).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </div>
         </div>
       </div>
@@ -206,8 +239,20 @@ export const AgentDetails: React.FC = () => {
                       <div className={`w-8 h-8 rounded-lg ${typeColor} flex items-center justify-center`}>
                         <FileCode className="w-4.5 h-4.5" />
                       </div>
-                      <h3 className="font-heading font-semibold text-sm">
-                        {pt.type_name} Prompt
+                      <h3 className="font-heading font-semibold text-sm flex items-center gap-1.5">
+                        <span>{pt.type_name} Prompt</span>
+                        {currentUser?.role === 'Manager' && (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleDeletePromptTypeClick(pt);
+                            }}
+                            className="p-1 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all-300 ml-1 cursor-pointer"
+                            title="Delete Prompt Type"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </h3>
                     </div>
 
@@ -242,7 +287,7 @@ export const AgentDetails: React.FC = () => {
                     {latest ? (
                       <div className="flex flex-col gap-0.5">
                         <span>Ver: <strong className="text-foreground">v{latest.version_number}</strong> ({latest.author_name})</span>
-                        <span>Saved: {new Date(latest.created_at).toLocaleDateString([], { day: 'numeric', month: 'short' })}</span>
+                        <span>Saved: {new Date(parseUTCDate(latest.created_at)).toLocaleDateString([], { day: 'numeric', month: 'short' })}</span>
                       </div>
                     ) : (
                       <span>v0 (Uninitialized)</span>
@@ -320,6 +365,45 @@ export const AgentDetails: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Delete Prompt Type Confirmation Modal */}
+      {showDeleteTypeConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm bg-card border border-border rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-destructive">
+              <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <h3 className="font-heading font-bold">Delete Prompt Type?</h3>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Are you sure you want to delete the prompt type <strong className="text-foreground">'{typeToDelete?.type_name}'</strong>? This action is permanent and will delete all associated prompt versions, test cases, and comments.
+            </p>
+            {deleteTypeError && (
+              <p className="text-[10px] text-destructive font-mono bg-destructive/5 p-2 rounded-lg">{deleteTypeError}</p>
+            )}
+            <div className="flex gap-3 justify-end pt-2">
+              <button
+                onClick={() => {
+                  setShowDeleteTypeConfirm(false);
+                  setTypeToDelete(null);
+                  setDeleteTypeError(null);
+                }}
+                disabled={deleteTypeLoading}
+                className="px-3.5 py-2 hover:bg-muted border border-border text-muted-foreground rounded-xl text-xs font-semibold transition-all-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDeleteType}
+                disabled={deleteTypeLoading}
+                className="px-3.5 py-2 bg-destructive hover:bg-red-600 text-white rounded-xl text-xs font-semibold transition-all-300 shadow-sm"
+              >
+                {deleteTypeLoading ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}

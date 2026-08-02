@@ -91,6 +91,10 @@ export const agentService = {
   async createPromptType(agentId: number, typeName: string) {
     const response = await api.post<PromptType>('/prompt-types', { type_name: typeName }, { params: { agent_id: agentId } });
     return response.data;
+  },
+  async deletePromptType(id: number) {
+    const response = await api.delete(`/prompt-types/${id}`);
+    return response.data;
   }
 };
 

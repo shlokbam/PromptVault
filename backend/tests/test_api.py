@@ -113,3 +113,43 @@ def test_create_agent(client):
     pt_resp2 = client.get(f"/api/v1/agents/{agent['id']}/prompt-types", headers=headers)
     assert pt_resp2.status_code == 200
     assert len(pt_resp2.json()) == 1
+
+
+def test_delete_prompt_type(client):
+    # Log in
+    login_resp = client.post(
+        "/api/v1/login",
+        json={"email": "bhushan@promptvault.com", "password": "ManagerPass123!"}
+    )
+    token = login_resp.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Create agent
+    agent_resp = client.post(
+        "/api/v1/agents",
+        json={"name": "Delete Type Agent", "description": "Temp agent to test deleting prompt type"},
+        headers=headers
+    )
+    agent = agent_resp.json()
+
+    # Create prompt type
+    pt_resp = client.post(
+        f"/api/v1/prompt-types?agent_id={agent['id']}",
+        json={"type_name": "SQL Prompt"},
+        headers=headers
+    )
+    prompt_type = pt_resp.json()
+
+    # Delete prompt type
+    delete_resp = client.delete(
+        f"/api/v1/prompt-types/{prompt_type['id']}",
+        headers=headers
+    )
+    assert delete_resp.status_code == 200
+    assert "Successfully deleted prompt type" in delete_resp.json()["message"]
+
+    # Confirm it is no longer in get prompt types list
+    pt_list_resp = client.get(f"/api/v1/agents/{agent['id']}/prompt-types", headers=headers)
+    assert pt_list_resp.status_code == 200
+    assert len(pt_list_resp.json()) == 0
+

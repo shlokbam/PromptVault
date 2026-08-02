@@ -276,6 +276,26 @@ def create_custom_prompt_type(prompt_type_in: schemas.PromptTypeBase, agent_id: 
     return prompt_type
 
 
+@router.delete("/prompt-types/{id}")
+def delete_prompt_type(id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Prompt type deletion is Manager only
+    verify_manager_role(current_user)
+    
+    prompt_type = db.query(models.PromptType).filter(models.PromptType.id == id).first()
+    if not prompt_type:
+        raise HTTPException(status_code=404, detail="Prompt type not found")
+        
+    type_name = prompt_type.type_name
+    agent_name = prompt_type.agent.name if prompt_type.agent else "Unknown"
+    
+    db.delete(prompt_type)
+    db.commit()
+    
+    log_activity(db, current_user.id, f"Deleted Prompt Type '{type_name}' from Agent '{agent_name}'", "PromptType", id)
+    return {"message": f"Successfully deleted prompt type '{type_name}' from agent '{agent_name}'"}
+
+
+
 # =====================================================================
 # PROMPT VERSIONS ENDPOINTS
 # =====================================================================

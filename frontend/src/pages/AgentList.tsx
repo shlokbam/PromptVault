@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Plus, Cpu, Calendar, User as UserIcon, Trash2, X } from 'lucide-react';
 import { agentService, authService } from '../services/api';
 import type { Agent, User } from '../types';
+import { parseUTCDate } from '../utils/date';
 
 export const AgentList: React.FC = () => {
   const navigate = useNavigate();
@@ -185,7 +186,7 @@ export const AgentList: React.FC = () => {
                 </span>
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
-                  {new Date(agent.created_at).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {parseUTCDate(agent.created_at).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
               </div>
             </Link>

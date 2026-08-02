@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Terminal, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
+import { Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 import { authService } from '../services/api';
+import logo from '../assets/logo.png';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -65,8 +66,8 @@ export const Login: React.FC = () => {
         
         {/* Brand/Header */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-primary to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-primary/20 mb-3">
-            <Terminal className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-2xl bg-white border border-zinc-800 overflow-hidden flex items-center justify-center shadow-lg shadow-primary/10 mb-3 p-1">
+            <img src={logo} alt="PromptVault Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl font-bold font-heading text-white tracking-tight bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
             PromptVault

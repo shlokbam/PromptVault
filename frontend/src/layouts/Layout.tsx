@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, Cpu, History, Settings, Search, 
-  LogOut, Sun, Moon, User as UserIcon, Terminal 
+  LogOut, Sun, Moon, User as UserIcon 
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { authService } from '../services/api';
 import type { User } from '../types';
+import logo from '../assets/logo.png';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { theme, toggleTheme } = useTheme();
@@ -53,8 +54,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <div>
           {/* Logo / Brand */}
           <div className="p-6 flex items-center gap-3 border-b border-border">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-white shadow-md shadow-primary/20">
-              <Terminal className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl overflow-hidden shadow-md shrink-0 bg-white flex items-center justify-center border border-border">
+              <img src={logo} alt="PromptVault Logo" className="w-full h-full object-contain p-1" />
             </div>
             <div>
               <span className="font-heading font-bold text-lg tracking-tight bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent">

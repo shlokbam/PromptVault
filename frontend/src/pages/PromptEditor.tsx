@@ -14,6 +14,7 @@ import type {
   TestedQuestion, Comment, User 
 } from '../types';
 import { useToast } from '../context/ToastContext';
+import { parseUTCDate } from '../utils/date';
 
 export const PromptEditor: React.FC = () => {
   const { agentId, typeName } = useParams<{ agentId: string; typeName: string }>();
@@ -612,7 +613,7 @@ export const PromptEditor: React.FC = () => {
                           <div className="flex items-center justify-between">
                             <span className="font-heading font-bold text-xs">Version {v.version_number}</span>
                             <span className="text-[9px] text-muted-foreground font-mono">
-                              {new Date(v.created_at).toLocaleDateString([], { day: 'numeric', month: 'short' })}
+                              {parseUTCDate(v.created_at).toLocaleDateString([], { day: 'numeric', month: 'short' })}
                             </span>
                           </div>
                           
@@ -804,7 +805,7 @@ export const PromptEditor: React.FC = () => {
                         <div className="flex items-center justify-between text-[10px]">
                           <span className="font-semibold text-foreground">{c.author_name}</span>
                           <span className="text-[9px] text-muted-foreground font-mono">
-                            {new Date(c.created_at).toLocaleDateString([], { day: 'numeric', month: 'short' })} at {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {parseUTCDate(c.created_at).toLocaleDateString([], { day: 'numeric', month: 'short' })} at {parseUTCDate(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                         <div className="p-2.5 bg-muted/40 border border-border/50 rounded-xl text-[10px] text-muted-foreground leading-relaxed whitespace-pre-wrap">

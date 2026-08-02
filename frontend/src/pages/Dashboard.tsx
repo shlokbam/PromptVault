@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { systemService, authService } from '../services/api';
 import type { DashboardStats, ActivityLog, User } from '../types';
+import { parseUTCDate } from '../utils/date';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -49,12 +50,12 @@ export const Dashboard: React.FC = () => {
 
   // Helper to format timestamps
   const formatTime = (timeStr: string) => {
-    const date = new Date(timeStr);
+    const date = parseUTCDate(timeStr);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const formatDate = (timeStr: string) => {
-    const date = new Date(timeStr);
+    const date = parseUTCDate(timeStr);
     return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
   };
 
