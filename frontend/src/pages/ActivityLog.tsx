@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { History, Filter, Layers } from 'lucide-react';
 import { systemService, authService } from '../services/api';
 import type { ActivityLog as LogItem } from '../types';
+import { parseUTCDate } from '../utils/date';
 
 export const ActivityLog: React.FC = () => {
   const navigate = useNavigate();
@@ -50,12 +51,12 @@ export const ActivityLog: React.FC = () => {
   });
 
   const formatDate = (timeStr: string) => {
-    const date = new Date(timeStr);
+    const date = parseUTCDate(timeStr);
     return date.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
   const formatTime = (timeStr: string) => {
-    const date = new Date(timeStr);
+    const date = parseUTCDate(timeStr);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
 
@@ -107,7 +108,7 @@ export const ActivityLog: React.FC = () => {
                 <th className="px-6 py-4">Timestamp</th>
                 <th className="px-6 py-4">User</th>
                 <th className="px-6 py-4">Action</th>
-                <th className="px-6 py-4">Target Entity</th>
+                <th className="px-6 py-4">Category</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border font-sans">
@@ -136,9 +137,13 @@ export const ActivityLog: React.FC = () => {
                       {log.action}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1 bg-muted px-2 py-1 rounded-md text-[9px] font-mono font-medium">
-                        <Layers className="w-3 h-3 text-muted-foreground" />
-                        {log.entity_type} (ID: {log.entity_id || 'N/A'})
+                      <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-full text-[9px] font-mono font-semibold">
+                        <Layers className="w-3 h-3 text-primary/70" />
+                        {log.entity_type === 'PromptVersion' 
+                          ? 'Prompt Version' 
+                          : log.entity_type === 'PromptType' 
+                          ? 'Prompt Type' 
+                          : log.entity_type}
                       </span>
                     </td>
                   </tr>
