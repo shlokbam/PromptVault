@@ -1,0 +1,61 @@
+{
+  "name": "promptvault",
+  "displayName": "PromptVault",
+  "description": "Secure prompt versioning workspace synchronized via OneDrive.",
+  "version": "1.0.0",
+  "publisher": "corporate",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "PromptVault Settings",
+      "properties": {
+        "promptvault.databasePath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute folder path to your local shared OneDrive database directory (where agents.json, prompts.json, etc. are synced)."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "promptvault.open",
+        "title": "PromptVault: Open Dashboard"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "promptvault-container",
+          "title": "PromptVault",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "promptvault-container": [
+        {
+          "type": "webview",
+          "id": "promptvault.view",
+          "name": "PromptVault Workspace"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -b",
+    "watch": "tsc -b -w"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}

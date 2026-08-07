@@ -1,150 +1,97 @@
-# PromptVault - Windows Corporate Setup Guide (Teams Tab & OneDrive)
+# PromptVault - Step-by-Step Enterprise Setup Guide
 
-This guide walks you through setting up **PromptVault** on your Windows corporate laptop.
+This guide walks you through setting up and running **PromptVault** on a Windows corporate laptop. 
 
----
+PromptVault is a prompt versioning tool that works **completely serverless**. All data is saved inside a shared corporate **OneDrive folder** as simple text files. Whenever a team member makes changes, OneDrive automatically syncs those files to the rest of the team in the background.
 
-## ⚠️ How the OneDrive Database Sync Works
-Since you configured the backend's `DATABASE_URL` to point to a file inside your synced corporate OneDrive folder:
-1. When you run your backend and save a prompt, it writes directly to the local SQLite database file `promptvault.db` in your OneDrive.
-2. Microsoft OneDrive automatically syncs `promptvault.db` to the cloud in the background.
-3. Once the file is uploaded, OneDrive downloads it to your team member's synced folder.
-4. When they start their backend, they will instantly see your updates.
+There are two ways to run this application:
+1. **Option A: VS Code Extension** (Best for developers or anyone using VS Code. No setup needed, just install a single file).
+2. **Option B: Microsoft Teams Web Tab** (Best for non-developers. Add it directly as a tab at the top of your Teams channel).
 
 ---
 
-## Phase 1: Set Up the OneDrive Sync Folder
+## Step 0: Set Up the Shared OneDrive Database Folder
+Before running the application, one team member needs to create and share the folder where the prompt files will be stored.
 
-1. Open **Windows File Explorer** (Press `Windows Key + E`).
-2. Navigate to your corporate **OneDrive** directory (e.g., `OneDrive - [Your Company Name]`).
-3. Create a new folder named `PromptVault_Database`.
-4. Right-click the folder, click **Share**, and share it with your team members.
-5. **Critical:** Change the permissions from "Can view" to **"Can edit"** (allow modifying files) so they can read/write prompt changes.
-6. Once your team members accept the sharing invitation, the `PromptVault_Database` folder will sync to their Windows laptops.
-
----
-
-## Phase 2: Run the Backend Server on Windows
-
-Since Node.js is already installed, make sure you also have **Python (version 3.10+)** installed on your Windows laptop.
-
-### Step 2.1: Open Terminal and Navigate to Backend
-1. Open **PowerShell** or **Command Prompt**:
-   * Press the `Windows Key`, type **PowerShell**, and press **Enter**.
-2. Navigate to the cloned repository's backend folder:
-   ```powershell
-   cd C:\Users\YourUsername\Documents\PromptVault\backend
-   ```
-
-### Step 2.2: Create and Activate Virtual Environment
-1. Create a Python virtual environment to keep dependencies isolated:
-   ```powershell
-   python -m venv venv
-   ```
-2. Activate the virtual environment:
-   * **In PowerShell:**
-     ```powershell
-     .\venv\Scripts\Activate.ps1
-     ```
-   * **In Command Prompt:**
-     ```cmd
-     venv\Scripts\activate.bat
-     ```
-
-### Step 2.3: Install Dependencies
-Install all required Python libraries:
-```powershell
-pip install -r requirements.txt
-```
-
-### Step 2.4: Launch Backend Pointing to OneDrive
-To tell the backend to write the database file directly to your shared OneDrive folder, we set the `DATABASE_URL` environment variable before launching the server.
-
-* **If using PowerShell:**
-  ```powershell
-  $env:DATABASE_URL="sqlite:///C:/Users/YourUsername/OneDrive - Your Company Name/PromptVault_Database/promptvault.db"
-  python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-  ```
-* **If using Command Prompt:**
-  ```cmd
-  set DATABASE_URL=sqlite:///C:/Users/YourUsername/OneDrive - Your Company Name/PromptVault_Database/promptvault.db
-  python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-  ```
-
-*(Replace `YourUsername` and `Your Company Name` with your actual Windows username and corporate OneDrive folder name. Use forward slashes `/` in the database URL path).*
-
-The backend will start and automatically create and seed the `promptvault.db` file inside your OneDrive folder!
+1. Open **Windows File Explorer** (Press the `Windows Key` and `E` at the same time).
+2. Look at the left sidebar and click on your corporate **OneDrive** folder (usually named `OneDrive - [Your Company Name]`).
+3. Right-click in any empty space, hover over **New**, and select **Folder**.
+4. Name this folder exactly: `PromptVault_Database`
+5. Right-click the newly created `PromptVault_Database` folder and click **Share** (look for the blue cloud icon).
+6. Type the email addresses of your team members who will use the tool.
+7. **Crucial Step:** Click the permission settings and change it from "Can view" to **"Can edit"** (allow modifying files). If they do not have edit permissions, they cannot save prompt edits!
+8. Click **Send**.
+9. Once your teammates accept the invite, this folder will automatically show up and synchronize in their Windows File Explorer as well.
 
 ---
 
-## Phase 3: Run the Frontend Server on Windows (HTTPS)
+## Option A: VS Code Extension Setup (Highly Recommended)
+This runs the entire PromptVault interface directly inside a VS Code sidebar tab. It requires no terminal commands, no backend servers, and no installations other than importing a single file.
 
-Microsoft Teams requires all custom tabs to use **HTTPS**. The frontend has been configured to run on `https://localhost:5173` using a local self-signed SSL certificate.
+### Step 1: Locate the Installer File
+In the root directory of this repository, we have pre-built the installation package:
+* File Name: `promptvault-1.0.0.vsix`
+* This single file contains all the user interface code and the file-saver scripts.
 
-### Step 3.1: Open a Second Terminal Window
-1. Open a **new, separate** PowerShell or Command Prompt window (leave the backend window running).
-2. Navigate to the frontend directory:
-   ```powershell
-   cd C:\Users\YourUsername\Documents\PromptVault\frontend
-   ```
+### Step 2: Transfer the File to your Manager/Teammates
+1. Send the `promptvault-1.0.0.vsix` file to your manager or teammates. You can email it, upload it to a OneDrive folder, or send it directly on Microsoft Teams.
+2. They should download it to their local machine (e.g. to their `Downloads` folder).
 
-### Step 3.2: Install and Start Frontend
-1. Install client libraries (this installs `@vitejs/plugin-basic-ssl` to handle HTTPS):
-   ```powershell
-   npm install
-   ```
-2. Run the developer web server:
-   ```powershell
-   npm run dev
-   ```
-3. Open your web browser (Chrome or Edge) and go to:
-   `https://localhost:5173`
-   
-   > [!IMPORTANT]
-   > The browser will show a warning saying **"Your connection is not private"** or **"Security Certificate Warning"** because the local SSL certificate is self-signed.
-   > * Click **Advanced** (or **Show Details**).
-   > * Click **Proceed to localhost (unsafe)** or **Trust/Accept Certificate**.
-   > * You only need to do this once. If you do not do this step, Microsoft Teams will show a blank white screen when trying to load the tab.
+### Step 3: Install the Extension in VS Code
+Tell your manager or teammates to perform these steps inside VS Code:
+1. Open **VS Code** on your Windows laptop.
+2. Look at the vertical toolbar on the far left. Click the **Extensions** icon (it looks like four squares, or press `Ctrl+Shift+X`).
+3. At the top of the Extensions panel that slide open, look in the top-right corner for the **`...`** (Views and More Actions) menu button. Click it.
+4. From the dropdown menu, select **Install from VSIX...** at the very bottom.
+5. A file explorer window will open. Navigate to the `promptvault-1.0.0.vsix` file you downloaded and select it.
+6. Click **Install**.
+7. In the bottom-right corner of VS Code, a popup will say "Successfully installed extension...". You will also see a new **PromptVault** icon (looks like a folder/box) in your far-left sidebar!
 
-4. The login screen will appear. You can now log in using the pre-seeded prototype accounts:
-    * **Manager / Lead Account**: `admin@promptvault.com` with password `ManagerPass123!`
-    * **Member Account**: `member@promptvault.com` with password `MemberPass123!`
+### Step 4: Configure the OneDrive folder path
+1. Open VS Code Settings by pressing `Ctrl+,` (or go to `File -> Preferences -> Settings`).
+2. In the top search bar, type: `PromptVault`
+3. Look for the setting titled **PromptVault: Database Path**.
+4. Paste the absolute path to your local shared OneDrive database folder here.
+   * *Example Windows Path:* `C:\Users\YourUsername\OneDrive - Company Name\PromptVault_Database`
+5. Close the settings tab.
+
+### Step 5: Launch and Use
+1. Click the **PromptVault** icon in your VS Code left sidebar.
+2. The dashboard will load immediately.
+3. Click the **Quick Access login buttons** (e.g., Alex or Jordan) or log in with your email.
+4. You can now create namespaces, write prompt versions, run test cases, and write comments. Everything you save writes directly to the OneDrive folder and syncs automatically!
 
 ---
 
-## Phase 4: Embedding in Microsoft Teams (Without Azure SSO)
+## Option B: Standalone Microsoft Teams Web Tab (No VS Code needed)
+If you want to make this available to non-developers directly in Microsoft Teams, you can build and host the website.
 
+### Step 1: Compile the Website
+1. Open your command prompt in the `frontend` folder on your development machine.
+2. Run:
+   ```cmd
+   npm run build
+   ```
+3. This creates a folder named `dist` containing the website bundle.
+
+### Step 2: Host the Website Internally
+1. Copy the files inside the `dist` folder and upload them to any company-approved static website hosting location (such as Azure Static Web Apps, an internal company intranet web server, or SharePoint).
+2. Save your website URL (e.g., `https://promptvault.internal.company.com`).
+
+### Step 3: Add to Microsoft Teams
 1. Open **Microsoft Teams** on your Windows laptop.
-2. Navigate to the team channel where you want to add the tab.
-3. Click the **`+` (Add a tab)** icon at the top of the channel screen.
-4. Select **Website** from the list of available apps.
-5. Configure the settings:
+2. Go to the team channel where your colleagues work.
+3. At the top of the screen (next to Posts and Files), click the **`+` (Add a tab)** icon.
+4. Select **Website** from the list of apps.
+5. Configure the popup:
    - **Tab Name**: `PromptVault`
-   - **URL**: `https://localhost:5173`
+   - **URL**: Paste your hosted URL (Must be `https://` secure).
 6. Click **Save**.
-7. PromptVault will load directly inside your Teams channel! You can sign in using your credentials and collaborate in real-time.
 
----
-
-## Instructions for Teammates to Join
-
-If another person wants to join this shared workspace, they need to follow these steps:
-
-1. **Accept OneDrive Access**: Accept the folder sharing link you sent them so that `PromptVault_Database` syncs to their computer.
-2. **Download Code**: Clone the same repository on their Windows laptop.
-3. **Run Backend**:
-   - Navigate to the `backend` folder.
-   - Run `python -m venv venv`.
-   - Run `.\venv\Scripts\Activate.ps1`.
-   - Run `pip install -r requirements.txt`.
-   - Start uvicorn, pointing `DATABASE_URL` to **their own local OneDrive sync path**:
-     ```powershell
-     $env:DATABASE_URL="sqlite:///C:/Users/TheirUsername/OneDrive - Your Company Name/PromptVault_Database/promptvault.db"
-     python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-     ```
-4. **Run Frontend**:
-   - Navigate to `frontend`.
-   - Run `npm install` and `npm run dev`.
-   - Open `https://localhost:5173` in their web browser and click **Advanced -> Proceed** (to approve the local certificate).
-   - Add the Website Tab inside Teams using `https://localhost:5173`.
-5. They can log in using their credentials and see all the shared prompts!
+### Step 4: Connect the OneDrive folder (First Time Setup)
+When your colleagues click the Teams tab for the first time:
+1. A banner will say: **"Connect your database folder to get started"**.
+2. Click the **Select OneDrive Folder** button.
+3. A Windows file selection dialog will pop up. Instruct them to select the synced `PromptVault_Database` folder in their OneDrive.
+4. Click **Allow/Grant Write Permissions** when prompted by the web browser.
+5. They can now sign in and edit prompts. The browser will save changes directly to their local OneDrive folder, which syncs to the cloud!
