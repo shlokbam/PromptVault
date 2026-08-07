@@ -45,16 +45,16 @@ No database server is hosted on the internet. Instead, your local workstations c
 
 ```mermaid
 graph TD
-    subgraph User A (Lead Workstation)
+    subgraph UserA ["User A (Lead Workstation)"]
         UI1["React UI (Teams or VS Code)"] -->|Saves Prompt Revision| FS1["Local OneDrive Sync Folder"]
     end
 
-    subgraph Corporate Cloud Sync
-        FS1 <==>|OneDrive Background Upload/Download| OC["OneDrive Cloud Folder"]
-        OC <==>|OneDrive Background Upload/Download| FS2["Local OneDrive Sync Folder"]
+    subgraph CorporateSync ["Corporate Cloud Sync"]
+        FS1 <-->|OneDrive Background Upload/Download| OC["OneDrive Cloud Folder"]
+        OC <-->|OneDrive Background Upload/Download| FS2["Local OneDrive Sync Folder"]
     end
 
-    subgraph User B (Member Workstation)
+    subgraph UserB ["User B (Member Workstation)"]
         FS2 -->|Loads Updated Prompt JSON| UI2["React UI (Teams or VS Code)"]
     end
 ```
