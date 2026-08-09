@@ -5,38 +5,64 @@ const vscode = require("vscode");
 const path = require("path");
 const fs = require("fs");
 function activate(context) {
+    const sidebarProvider = new PromptVaultSidebarProvider(context.extensionUri);
+    // Sidebar Webview provider
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider('promptvault.view', sidebarProvider));
     // Command to open PromptVault in a main editor tab
     context.subscriptions.push(vscode.commands.registerCommand('promptvault.open', () => {
         PromptVaultPanel.createOrShow(context.extensionUri);
     }));
-    // Sidebar Webview provider
-    context.subscriptions.push(vscode.window.registerWebviewViewProvider('promptvault.view', new PromptVaultSidebarProvider(context.extensionUri)));
+    // Listen for config changes to automatically refresh the view
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration('promptvault.databasePath')) {
+            sidebarProvider.updateWebview();
+            if (PromptVaultPanel.currentPanel) {
+                PromptVaultPanel.currentPanel.updateWebview();
+            }
+        }
+    }));
 }
 // Sidebar provider implementation
 class PromptVaultSidebarProvider {
     _extensionUri;
+    _view;
+    _disposables = [];
     constructor(_extensionUri) {
         this._extensionUri = _extensionUri;
     }
     resolveWebviewView(webviewView, _context, _token) {
+        this._view = webviewView;
         webviewView.webview.options = {
             enableScripts: true,
             localResourceRoots: [this._extensionUri]
         };
+        this.updateWebview();
+    }
+    updateWebview() {
+        if (!this._view) {
+            return;
+        }
+        // Clean up previous listeners to prevent duplicates
+        while (this._disposables.length) {
+            const x = this._disposables.pop();
+            if (x) {
+                x.dispose();
+            }
+        }
         const databasePath = getDatabasePath();
         if (!databasePath) {
-            webviewView.webview.html = getSetupRequiredHtml();
-            webviewView.webview.onDidReceiveMessage((message) => {
+            this._view.webview.html = getSetupRequiredHtml();
+            this._disposables.push(this._view.webview.onDidReceiveMessage((message) => {
                 if (message.action === 'openSettings' || message.command === 'openSettings') {
                     vscode.commands.executeCommand('workbench.action.openSettings', 'promptvault.databasePath');
                 }
-            });
+            }));
             return;
         }
         const db = new LocalDatabase(databasePath);
         db.init();
-        webviewView.webview.html = getWebviewContent(webviewView.webview, this._extensionUri);
-        setupMessageListener(webviewView.webview, db);
+        this._view.webview.html = getWebviewContent(this._view.webview, this._extensionUri);
+        this._disposables.push(setupMessageListener(this._view.webview, db));
     }
 }
 // Main Editor Webview Panel implementation
@@ -45,6 +71,7 @@ class PromptVaultPanel {
     _panel;
     _extensionUri;
     _disposables = [];
+    _webviewDisposables = [];
     static createOrShow(extensionUri) {
         const column = vscode.window.activeTextEditor
             ? vscode.window.activeTextEditor.viewColumn
@@ -63,27 +90,43 @@ class PromptVaultPanel {
     constructor(panel, extensionUri) {
         this._panel = panel;
         this._extensionUri = extensionUri;
+        this.updateWebview();
+        this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
+    }
+    updateWebview() {
+        // Clear previous webview listeners to prevent duplicates
+        while (this._webviewDisposables.length) {
+            const x = this._webviewDisposables.pop();
+            if (x) {
+                x.dispose();
+            }
+        }
         const databasePath = getDatabasePath();
         if (!databasePath) {
             this._panel.webview.html = getSetupRequiredHtml();
-            this._panel.webview.onDidReceiveMessage((message) => {
+            this._webviewDisposables.push(this._panel.webview.onDidReceiveMessage((message) => {
                 if (message.action === 'openSettings' || message.command === 'openSettings') {
                     vscode.commands.executeCommand('workbench.action.openSettings', 'promptvault.databasePath');
                 }
-            });
+            }));
             return;
         }
         const db = new LocalDatabase(databasePath);
         db.init();
         this._panel.webview.html = getWebviewContent(this._panel.webview, this._extensionUri);
-        setupMessageListener(this._panel.webview, db);
-        this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
+        this._webviewDisposables.push(setupMessageListener(this._panel.webview, db));
     }
     dispose() {
         PromptVaultPanel.currentPanel = undefined;
         this._panel.dispose();
         while (this._disposables.length) {
             const x = this._disposables.pop();
+            if (x) {
+                x.dispose();
+            }
+        }
+        while (this._webviewDisposables.length) {
+            const x = this._webviewDisposables.pop();
             if (x) {
                 x.dispose();
             }
@@ -146,7 +189,7 @@ function getWebviewContent(webview, extensionUri) {
 }
 // Receive and delegate requests from the React frontend
 function setupMessageListener(webview, db) {
-    webview.onDidReceiveMessage((message) => {
+    return webview.onDidReceiveMessage((message) => {
         const { id, action, payload } = message;
         if (action === 'openSettings' || message.command === 'openSettings') {
             vscode.commands.executeCommand('workbench.action.openSettings', 'promptvault.databasePath');
