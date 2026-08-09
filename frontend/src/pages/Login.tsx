@@ -12,11 +12,22 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // If user is already logged in, redirect to dashboard
-    const user = authService.getCurrentUser();
-    if (user) {
-      navigate('/');
-    }
+    const restoreSession = async () => {
+      const user = authService.getCurrentUser();
+      if (user) {
+        navigate('/');
+        return;
+      }
+      try {
+        const session = await authService.getSession();
+        if (session && session.user) {
+          navigate('/');
+        }
+      } catch (err) {
+        console.error('Error restoring session:', err);
+      }
+    };
+    restoreSession();
   }, [navigate]);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {

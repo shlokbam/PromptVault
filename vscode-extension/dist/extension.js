@@ -4,13 +4,280 @@ exports.activate = activate;
 const vscode = require("vscode");
 const path = require("path");
 const fs = require("fs");
+const activeWebviews = new Set();
+function broadcastMessage(message) {
+    for (const webview of activeWebviews) {
+        try {
+            webview.postMessage(message);
+        }
+        catch (e) {
+            // ignore
+        }
+    }
+}
+let statusBarItem;
+function getDatabase() {
+    const path = getDatabasePath();
+    if (!path) {
+        return null;
+    }
+    return new LocalDatabase(path);
+}
+function updateStatusBar(context) {
+    if (!statusBarItem)
+        return;
+    const databasePath = getDatabasePath();
+    const currentUser = context.globalState.get('currentUser');
+    if (!databasePath) {
+        statusBarItem.text = '$(shield) PromptVault: Set Path';
+        statusBarItem.tooltip = 'Click to configure OneDrive database path';
+        statusBarItem.show();
+        return;
+    }
+    if (!currentUser) {
+        statusBarItem.text = '$(lock) PromptVault: Log In';
+        statusBarItem.tooltip = 'Click to log in or register';
+        statusBarItem.show();
+        return;
+    }
+    const activeAgentName = context.globalState.get('activeAgentName') || 'No Agent';
+    statusBarItem.text = `$(folder-active) PromptVault: ${activeAgentName}`;
+    statusBarItem.tooltip = `Logged in as ${currentUser.name}. Click for quick actions.`;
+    statusBarItem.show();
+}
 function activate(context) {
-    const sidebarProvider = new PromptVaultSidebarProvider(context.extensionUri);
+    const sidebarProvider = new PromptVaultSidebarProvider(context, context.extensionUri);
+    // Initialize Status Bar Item
+    statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+    statusBarItem.command = 'promptvault.statusBarClick';
+    context.subscriptions.push(statusBarItem);
+    updateStatusBar(context);
     // Sidebar Webview provider
     context.subscriptions.push(vscode.window.registerWebviewViewProvider('promptvault.view', sidebarProvider));
     // Command to open PromptVault in a main editor tab
     context.subscriptions.push(vscode.commands.registerCommand('promptvault.open', () => {
-        PromptVaultPanel.createOrShow(context.extensionUri);
+        PromptVaultPanel.createOrShow(context, context.extensionUri);
+    }));
+    // Status Bar click command (Quick Actions)
+    context.subscriptions.push(vscode.commands.registerCommand('promptvault.statusBarClick', async () => {
+        const databasePath = getDatabasePath();
+        if (!databasePath) {
+            vscode.commands.executeCommand('workbench.action.openSettings', 'promptvault.databasePath');
+            return;
+        }
+        const currentUser = context.globalState.get('currentUser');
+        if (!currentUser) {
+            vscode.commands.executeCommand('workbench.view.extension.promptvault-container');
+            vscode.window.showInformationMessage('Please log in or register in the PromptVault sidebar.');
+            return;
+        }
+        const db = getDatabase();
+        if (!db) {
+            vscode.window.showErrorMessage('Failed to load database. Check settings.');
+            return;
+        }
+        const activeAgentId = context.globalState.get('activeAgentId');
+        const activeAgentName = context.globalState.get('activeAgentName') || 'None';
+        const activePromptTypeId = context.globalState.get('activePromptTypeId');
+        const activePromptTypeName = context.globalState.get('activePromptTypeName') || 'None';
+        const options = [
+            {
+                label: `$(user) Logged in as: ${currentUser.name}`,
+                description: 'Click to Log Out',
+                detail: `Email: ${currentUser.email} (${currentUser.role})`
+            },
+            {
+                label: `$(tag) Select Active Agent (Current: ${activeAgentName})`,
+                description: 'Change active agent namespace'
+            },
+            {
+                label: `$(file) Select Active Prompt File (Current: ${activePromptTypeName})`,
+                description: 'Change current prompt type'
+            }
+        ];
+        if (activeAgentId && activePromptTypeId) {
+            options.push({
+                label: `$(desktop-download) Insert Current Prompt Version`,
+                description: `Paste selected version of ${activePromptTypeName} into editor`
+            }, {
+                label: `$(cloud-upload) Save Active Editor as New Version`,
+                description: `Save active document as next version of ${activePromptTypeName}`
+            });
+        }
+        options.push({
+            label: `$(gear) Open Settings`,
+            description: 'Configure OneDrive folder path'
+        });
+        const selection = await vscode.window.showQuickPick(options, {
+            placeHolder: 'PromptVault Quick Actions'
+        });
+        if (!selection)
+            return;
+        if (selection.label.startsWith('$(user)')) {
+            // Log out
+            await context.globalState.update('currentUser', undefined);
+            await context.globalState.update('activeAgentId', undefined);
+            await context.globalState.update('activeAgentName', undefined);
+            await context.globalState.update('activePromptTypeId', undefined);
+            await context.globalState.update('activePromptTypeName', undefined);
+            updateStatusBar(context);
+            broadcastMessage({
+                type: 'activeSelectionChanged',
+                activeAgentId: undefined,
+                activeAgentName: undefined,
+                activePromptTypeId: undefined,
+                activePromptTypeName: undefined
+            });
+            vscode.window.showInformationMessage('Logged out of PromptVault.');
+        }
+        else if (selection.label.startsWith('$(tag)')) {
+            // Select Agent Namespace
+            const agents = db.getAgents();
+            const agentOptions = agents.map((a) => ({
+                label: a.name,
+                description: a.description,
+                id: a.id
+            }));
+            agentOptions.push({
+                label: '$(plus) Create New Agent Namespace',
+                description: 'Define a new agent in the database',
+                id: -1
+            });
+            const agentSel = await vscode.window.showQuickPick(agentOptions, {
+                placeHolder: 'Select Agent Namespace'
+            });
+            if (!agentSel)
+                return;
+            if (agentSel.id === -1) {
+                const newName = await vscode.window.showInputBox({ prompt: 'Enter new Agent name' });
+                if (!newName)
+                    return;
+                const newDesc = await vscode.window.showInputBox({ prompt: 'Enter Agent description (optional)' });
+                const newAgent = db.createAgent(newName, newDesc);
+                await context.globalState.update('activeAgentId', newAgent.id);
+                await context.globalState.update('activeAgentName', newAgent.name);
+                await context.globalState.update('activePromptTypeId', undefined);
+                await context.globalState.update('activePromptTypeName', undefined);
+                vscode.window.showInformationMessage(`Agent namespace '${newName}' created!`);
+            }
+            else {
+                await context.globalState.update('activeAgentId', agentSel.id);
+                await context.globalState.update('activeAgentName', agentSel.label);
+                await context.globalState.update('activePromptTypeId', undefined);
+                await context.globalState.update('activePromptTypeName', undefined);
+            }
+            updateStatusBar(context);
+            broadcastMessage({
+                type: 'activeSelectionChanged',
+                activeAgentId: context.globalState.get('activeAgentId'),
+                activeAgentName: context.globalState.get('activeAgentName'),
+                activePromptTypeId: undefined,
+                activePromptTypeName: undefined
+            });
+        }
+        else if (selection.label.startsWith('$(file)')) {
+            // Select Prompt Type
+            if (!activeAgentId) {
+                vscode.window.showWarningMessage('Please select an active Agent namespace first.');
+                return;
+            }
+            const types = db.getPromptTypes(activeAgentId);
+            const typeOptions = types.map((t) => ({
+                label: t.type_name,
+                id: t.id
+            }));
+            typeOptions.push({
+                label: '$(plus) Create New Prompt Type (File)',
+                id: -1
+            });
+            const typeSel = await vscode.window.showQuickPick(typeOptions, {
+                placeHolder: 'Select Prompt Type'
+            });
+            if (!typeSel)
+                return;
+            if (typeSel.id === -1) {
+                const newName = await vscode.window.showInputBox({ prompt: 'Enter new Prompt Type name (e.g. System, SQL, Validation)' });
+                if (!newName)
+                    return;
+                const newType = db.createPromptType(activeAgentId, newName);
+                await context.globalState.update('activePromptTypeId', newType.id);
+                await context.globalState.update('activePromptTypeName', newType.type_name);
+                vscode.window.showInformationMessage(`Prompt Type '${newName}' created!`);
+            }
+            else {
+                await context.globalState.update('activePromptTypeId', typeSel.id);
+                await context.globalState.update('activePromptTypeName', typeSel.label);
+            }
+            updateStatusBar(context);
+            broadcastMessage({
+                type: 'activeSelectionChanged',
+                activeAgentId: context.globalState.get('activeAgentId'),
+                activeAgentName: context.globalState.get('activeAgentName'),
+                activePromptTypeId: context.globalState.get('activePromptTypeId'),
+                activePromptTypeName: context.globalState.get('activePromptTypeName')
+            });
+        }
+        else if (selection.label.includes('Insert Current Prompt Version')) {
+            if (!activePromptTypeId)
+                return;
+            const versions = db.getVersions(activePromptTypeId);
+            if (versions.length === 0) {
+                vscode.window.showWarningMessage('No versions found for this prompt.');
+                return;
+            }
+            const verOptions = versions.map((v) => ({
+                label: `Version ${v.version_number} (${v.status})`,
+                description: v.change_summary,
+                content: v.content
+            }));
+            const verSel = await vscode.window.showQuickPick(verOptions, {
+                placeHolder: 'Select version to insert'
+            });
+            if (!verSel)
+                return;
+            const activeEditor = vscode.window.activeTextEditor;
+            if (activeEditor) {
+                await activeEditor.edit(editBuilder => {
+                    const position = activeEditor.selection.active;
+                    editBuilder.insert(position, verSel.content);
+                });
+                vscode.window.showInformationMessage('Prompt version inserted!');
+            }
+            else {
+                vscode.window.showErrorMessage('No active text editor open.');
+            }
+        }
+        else if (selection.label.includes('Save Active Editor as New Version')) {
+            if (!activePromptTypeId)
+                return;
+            const activeEditor = vscode.window.activeTextEditor;
+            if (!activeEditor) {
+                vscode.window.showErrorMessage('No active text editor open.');
+                return;
+            }
+            const content = activeEditor.document.getText();
+            const changeSummary = await vscode.window.showInputBox({
+                prompt: 'Enter Change Summary for this new version',
+                placeHolder: 'e.g. Added error validation block'
+            });
+            if (!changeSummary)
+                return;
+            const statusOptions = ['Draft', 'Testing', 'Production', 'Archived'];
+            const statusSel = await vscode.window.showQuickPick(statusOptions, {
+                placeHolder: 'Select status for this version'
+            });
+            if (!statusSel)
+                return;
+            db.createVersion(activePromptTypeId, content, changeSummary, statusSel);
+            vscode.window.showInformationMessage(`Saved new version of ${activePromptTypeName} successfully!`);
+            broadcastMessage({
+                type: 'versionAdded',
+                promptTypeId: activePromptTypeId
+            });
+        }
+        else if (selection.label.includes('Open Settings')) {
+            vscode.commands.executeCommand('workbench.action.openSettings', 'promptvault.databasePath');
+        }
     }));
     // Listen for config changes to automatically refresh the view
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((e) => {
@@ -19,15 +286,18 @@ function activate(context) {
             if (PromptVaultPanel.currentPanel) {
                 PromptVaultPanel.currentPanel.updateWebview();
             }
+            updateStatusBar(context);
         }
     }));
 }
 // Sidebar provider implementation
 class PromptVaultSidebarProvider {
+    _context;
     _extensionUri;
     _view;
     _disposables = [];
-    constructor(_extensionUri) {
+    constructor(_context, _extensionUri) {
+        this._context = _context;
         this._extensionUri = _extensionUri;
     }
     resolveWebviewView(webviewView, _context, _token) {
@@ -46,6 +316,7 @@ class PromptVaultSidebarProvider {
         while (this._disposables.length) {
             const x = this._disposables.pop();
             if (x) {
+                activeWebviews.delete(this._view.webview);
                 x.dispose();
             }
         }
@@ -62,7 +333,12 @@ class PromptVaultSidebarProvider {
         const db = new LocalDatabase(databasePath);
         db.init();
         this._view.webview.html = getWebviewContent(this._view.webview, this._extensionUri);
-        this._disposables.push(setupMessageListener(this._view.webview, db));
+        const listener = setupMessageListener(this._context, this._view.webview, db);
+        this._disposables.push(listener);
+        activeWebviews.add(this._view.webview);
+        this._disposables.push(new vscode.Disposable(() => {
+            activeWebviews.delete(this._view.webview);
+        }));
     }
 }
 // Main Editor Webview Panel implementation
@@ -70,9 +346,10 @@ class PromptVaultPanel {
     static currentPanel;
     _panel;
     _extensionUri;
+    _context;
     _disposables = [];
     _webviewDisposables = [];
-    static createOrShow(extensionUri) {
+    static createOrShow(context, extensionUri) {
         const column = vscode.window.activeTextEditor
             ? vscode.window.activeTextEditor.viewColumn
             : undefined;
@@ -85,9 +362,10 @@ class PromptVaultPanel {
             localResourceRoots: [extensionUri],
             retainContextWhenHidden: true
         });
-        PromptVaultPanel.currentPanel = new PromptVaultPanel(panel, extensionUri);
+        PromptVaultPanel.currentPanel = new PromptVaultPanel(context, panel, extensionUri);
     }
-    constructor(panel, extensionUri) {
+    constructor(context, panel, extensionUri) {
+        this._context = context;
         this._panel = panel;
         this._extensionUri = extensionUri;
         this.updateWebview();
@@ -98,6 +376,7 @@ class PromptVaultPanel {
         while (this._webviewDisposables.length) {
             const x = this._webviewDisposables.pop();
             if (x) {
+                activeWebviews.delete(this._panel.webview);
                 x.dispose();
             }
         }
@@ -114,7 +393,12 @@ class PromptVaultPanel {
         const db = new LocalDatabase(databasePath);
         db.init();
         this._panel.webview.html = getWebviewContent(this._panel.webview, this._extensionUri);
-        this._webviewDisposables.push(setupMessageListener(this._panel.webview, db));
+        const listener = setupMessageListener(this._context, this._panel.webview, db);
+        this._webviewDisposables.push(listener);
+        activeWebviews.add(this._panel.webview);
+        this._webviewDisposables.push(new vscode.Disposable(() => {
+            activeWebviews.delete(this._panel.webview);
+        }));
     }
     dispose() {
         PromptVaultPanel.currentPanel = undefined;
@@ -188,8 +472,8 @@ function getWebviewContent(webview, extensionUri) {
     return html;
 }
 // Receive and delegate requests from the React frontend
-function setupMessageListener(webview, db) {
-    return webview.onDidReceiveMessage((message) => {
+function setupMessageListener(context, webview, db) {
+    return webview.onDidReceiveMessage(async (message) => {
         const { id, action, payload } = message;
         if (action === 'openSettings' || message.command === 'openSettings') {
             vscode.commands.executeCommand('workbench.action.openSettings', 'promptvault.databasePath');
@@ -198,6 +482,60 @@ function setupMessageListener(webview, db) {
         try {
             let data = null;
             switch (action) {
+                case 'getSession':
+                    const currentUser = context.globalState.get('currentUser');
+                    if (currentUser) {
+                        data = {
+                            access_token: 'local-vscode-token',
+                            token_type: 'bearer',
+                            user: currentUser
+                        };
+                    }
+                    else {
+                        data = null;
+                    }
+                    break;
+                case 'logout':
+                    await context.globalState.update('currentUser', undefined);
+                    await context.globalState.update('activeAgentId', undefined);
+                    await context.globalState.update('activeAgentName', undefined);
+                    await context.globalState.update('activePromptTypeId', undefined);
+                    await context.globalState.update('activePromptTypeName', undefined);
+                    updateStatusBar(context);
+                    broadcastMessage({
+                        type: 'activeSelectionChanged',
+                        activeAgentId: undefined,
+                        activeAgentName: undefined,
+                        activePromptTypeId: undefined,
+                        activePromptTypeName: undefined
+                    });
+                    data = { success: true };
+                    break;
+                case 'insertVersionContent':
+                    const activeEditor = vscode.window.activeTextEditor;
+                    if (activeEditor) {
+                        await activeEditor.edit((editBuilder) => {
+                            const position = activeEditor.selection.active;
+                            editBuilder.insert(position, payload.content);
+                        });
+                        vscode.window.showInformationMessage('Prompt version inserted successfully!');
+                        data = { success: true };
+                    }
+                    else {
+                        vscode.window.showErrorMessage('No active text editor open to insert prompt.');
+                        data = { error: 'No active text editor' };
+                    }
+                    break;
+                case 'getActiveEditorContent':
+                    const actEditor = vscode.window.activeTextEditor;
+                    if (actEditor) {
+                        data = { content: actEditor.document.getText() };
+                    }
+                    else {
+                        vscode.window.showErrorMessage('No active text editor open.');
+                        data = { error: 'No active text editor' };
+                    }
+                    break;
                 case 'login':
                     data = {
                         access_token: 'local-vscode-token',
@@ -210,6 +548,8 @@ function setupMessageListener(webview, db) {
                             created_at: new Date().toISOString()
                         }
                     };
+                    await context.globalState.update('currentUser', data.user);
+                    updateStatusBar(context);
                     break;
                 case 'register':
                     data = {
@@ -219,6 +559,8 @@ function setupMessageListener(webview, db) {
                         role: payload.role,
                         created_at: new Date().toISOString()
                     };
+                    await context.globalState.update('currentUser', data);
+                    updateStatusBar(context);
                     break;
                 case 'getAgents':
                     data = db.getAgents();

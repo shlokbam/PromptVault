@@ -108,7 +108,11 @@ export const authService = {
   },
   async register(name: string, email: string, role: 'Manager' | 'Member', password: string) {
     if (vscode) {
-      return sendVsCodeRequest('register', { name, email, role, password });
+      const data = await sendVsCodeRequest('register', { name, email, role, password });
+      // In VS Code, we can automatically log in after registration
+      localStorage.setItem('token', 'local-vscode-token');
+      localStorage.setItem('user', JSON.stringify(data));
+      return data;
     }
     const response = await api.post<User>('/register', { name, email, role, password });
     return response.data;
@@ -123,10 +127,28 @@ export const authService = {
   logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    if (vscode) {
+      sendVsCodeRequest('logout').catch(() => {});
+    }
   },
   getCurrentUser(): User | null {
     const userStr = localStorage.getItem('user');
     return userStr ? JSON.parse(userStr) : null;
+  },
+  async getSession() {
+    if (vscode) {
+      try {
+        const data = await sendVsCodeRequest('getSession');
+        if (data && data.user) {
+          localStorage.setItem('token', data.access_token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          return data;
+        }
+      } catch (e) {
+        console.error('Failed to get session', e);
+      }
+    }
+    return null;
   }
 };
 
@@ -221,6 +243,12 @@ export const versionService = {
     }
     const response = await api.delete(`/versions/${id}`);
     return response.data;
+  },
+  async getActiveEditorContent() {
+    if (vscode) {
+      return sendVsCodeRequest('getActiveEditorContent');
+    }
+    return null;
   }
 };
 

@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import Editor from '@monaco-editor/react';
 import { 
   ArrowLeft, Copy, Download, Save, RotateCcw, GitCompare, 
-  Trash2, Play, Plus, ShieldAlert, FileCode, X
+  Trash2, Play, Plus, ShieldAlert, FileCode, X, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { 
   agentService, versionService, commentService, 
@@ -126,6 +126,38 @@ export const PromptEditor: React.FC = () => {
     loadData();
   }, [agentId, typeName, activeVersionIdParam, navigate]);
 
+  // Listen for VS Code IPC messages (Active Agent/Prompt changes or timeline updates)
+  useEffect(() => {
+    const handleVsCodeMessage = async (event: MessageEvent) => {
+      const message = event.data;
+      if (!message) return;
+
+      if (message.type === 'activeSelectionChanged') {
+        if (message.activeAgentId && message.activePromptTypeName) {
+          navigate(`/agents/${message.activeAgentId}/prompts/${message.activePromptTypeName}`);
+        }
+      } else if (message.type === 'versionAdded') {
+        if (promptType && message.promptTypeId === promptType.id) {
+          try {
+            const versionsList = await versionService.getVersions(promptType.id);
+            setVersions(versionsList);
+            if (versionsList.length > 0) {
+              loadVersionIntoEditor(versionsList[0], versionsList[0].id);
+              setSearchParams({ versionId: versionsList[0].id.toString() });
+            }
+          } catch (e) {
+            console.error('Failed to reload versions', e);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('message', handleVsCodeMessage);
+    return () => {
+      window.removeEventListener('message', handleVsCodeMessage);
+    };
+  }, [promptType, navigate, setSearchParams]);
+
   // Handle version content, comments, tests loading
   const loadVersionIntoEditor = async (version: PromptVersion, latestId: number) => {
     setSelectedVersion(version);
@@ -175,6 +207,34 @@ export const PromptEditor: React.FC = () => {
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
+  };
+
+  const handleInsertToEditor = () => {
+    if (window.vscodeApi) {
+      window.vscodeApi.postMessage({
+        action: 'insertVersionContent',
+        payload: { content: editorContent }
+      });
+      toast.success('Prompt version inserted into active VS Code editor!');
+    }
+  };
+
+  const handleImportFromEditor = async () => {
+    if (window.vscodeApi) {
+      try {
+        const data = await versionService.getActiveEditorContent();
+        if (data && data.content !== undefined) {
+          setEditorContent(data.content);
+          calculateCounts(data.content);
+          toast.success('Imported prompt content from active VS Code editor!');
+        } else {
+          toast.error('Could not import. Ensure you have an active file open in VS Code.');
+        }
+      } catch (err) {
+        console.error('Failed to import editor content:', err);
+        toast.error('Failed to retrieve active editor content.');
+      }
+    }
   };
 
   const handleSaveSubmit = async (e: React.FormEvent) => {
@@ -443,6 +503,29 @@ export const PromptEditor: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-1.5">
+              {/* VS Code Editor Integrations */}
+              {window.vscodeApi && (
+                <>
+                  <button
+                    onClick={handleInsertToEditor}
+                    className="flex items-center gap-1 px-2.5 py-1.5 border border-primary/20 hover:bg-primary/10 text-primary rounded-lg text-xs font-semibold transition-all-300"
+                    title="Insert prompt version into active VS Code editor"
+                  >
+                    <ArrowDown className="w-3.5 h-3.5" />
+                    <span>Insert to Editor</span>
+                  </button>
+
+                  <button
+                    onClick={handleImportFromEditor}
+                    className="flex items-center gap-1 px-2.5 py-1.5 border border-border hover:bg-muted rounded-lg text-xs font-semibold transition-all-300"
+                    title="Import prompt content from active VS Code editor"
+                  >
+                    <ArrowUp className="w-3.5 h-3.5" />
+                    <span>Import from Editor</span>
+                  </button>
+                </>
+              )}
+
               {/* Copy */}
               <button
                 onClick={handleCopy}
