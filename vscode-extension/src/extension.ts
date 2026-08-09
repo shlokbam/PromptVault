@@ -36,6 +36,11 @@ class PromptVaultSidebarProvider implements vscode.WebviewViewProvider {
     const databasePath = getDatabasePath();
     if (!databasePath) {
       webviewView.webview.html = getSetupRequiredHtml();
+      webviewView.webview.onDidReceiveMessage((message) => {
+        if (message.action === 'openSettings' || message.command === 'openSettings') {
+          vscode.commands.executeCommand('workbench.action.openSettings', 'promptvault.databasePath');
+        }
+      });
       return;
     }
 
@@ -85,6 +90,11 @@ class PromptVaultPanel {
     const databasePath = getDatabasePath();
     if (!databasePath) {
       this._panel.webview.html = getSetupRequiredHtml();
+      this._panel.webview.onDidReceiveMessage((message) => {
+        if (message.action === 'openSettings' || message.command === 'openSettings') {
+          vscode.commands.executeCommand('workbench.action.openSettings', 'promptvault.databasePath');
+        }
+      });
       return;
     }
 
@@ -134,7 +144,7 @@ function getSetupRequiredHtml(): string {
       <h3>OneDrive Database Path Required</h3>
       <p>Please configure your shared local OneDrive database folder path before opening the PromptVault workspace.</p>
       <p>Go to: <code>Settings -> Extensions -> PromptVault Settings</code> and set the path (e.g. <code>C:\\Users\\username\\OneDrive - Company\\PromptVault_Database</code>).</p>
-      <button onclick="vscode.postMessage({ command: 'openSettings' })">Open Settings</button>
+      <button>Open Settings</button>
       <script>
         const vscode = acquireVsCodeApi();
         document.querySelector('button').addEventListener('click', () => {
@@ -175,7 +185,7 @@ function setupMessageListener(webview: vscode.Webview, db: LocalDatabase) {
   webview.onDidReceiveMessage((message) => {
     const { id, action, payload } = message;
 
-    if (action === 'openSettings') {
+    if (action === 'openSettings' || message.command === 'openSettings') {
       vscode.commands.executeCommand('workbench.action.openSettings', 'promptvault.databasePath');
       return;
     }
