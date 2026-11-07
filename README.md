@@ -1,103 +1,77 @@
-# PromptVault - Secure Collaboration Workspace (OneDrive Sync)
+<div align="center">
 
-Welcome to **PromptVault**.
+<img src=".github/assets/banner.svg" alt="PromptVault: version control for prompts" width="100%">
 
-PromptVault is a corporate-compliant, self-hosted prompt version control and testing system. It is designed to run entirely within your company's existing workstation environment, utilizing **Microsoft OneDrive** for database synchronization and **Microsoft Teams** or **VS Code** as the unified visual workspace.
+<img src="https://img.shields.io/badge/vs%20code-extension%201.0.0-FF5A1F?style=flat-square&labelColor=2A2926" alt="vs code: extension 1.0.0">
+<img src="https://img.shields.io/badge/hosting-none%20needed-FF5A1F?style=flat-square&labelColor=2A2926" alt="hosting: none needed">
+<img src="https://img.shields.io/badge/ui-React%20%2B%20Monaco-F2EFE7?style=flat-square&labelColor=2A2926" alt="ui: React + Monaco">
+<img src="https://img.shields.io/badge/storage-JSON%20on%20OneDrive-F2EFE7?style=flat-square&labelColor=2A2926" alt="storage: JSON on OneDrive">
+<img src="https://img.shields.io/badge/optional%20api-FastAPI-F2EFE7?style=flat-square&labelColor=2A2926" alt="optional api: FastAPI">
 
----
+<a href="SETUP_GUIDE.md">Setup guide</a> · <a href="#what-it-does">What it does</a> · <a href="#how-it-works">How it works</a> · <a href="#quickstart">Quickstart</a> · <a href="#design-decisions">Decisions</a> · <a href="docs/DETAILS.md">Full notes</a>
 
-## 1. Why PromptVault? (The Problem & Solution)
+</div>
 
-### The Problem
-When working with Large Language Models (LLMs), engineering teams need to write, refine, version-control, and test system prompts, SQL templates, and formatting structures. However:
-1. Setting up external databases or servers requires lengthy corporate security reviews.
-2. Storing prompts on external third-party servers raises compliance, IP, and data leak concerns.
-3. Keeping track of version differences (e.g. what changed between v2 and v3 of a system prompt) manually in text files is slow and prone to errors.
+## In one minute
 
-### The Solution
-PromptVault is **100% serverless and offline-compliant**.
-* **Zero External Hosting**: All data (prompts, version history, audit logs, comments, and test cases) is stored as simple, human-readable `.json` text files.
-* **Corporate Sync**: It places these JSON files inside your existing corporate **OneDrive folder**. Microsoft OneDrive automatically syncs these files between you and your colleagues in the background.
-* **Unified UI**: You view and edit prompts using a rich interface containing Monaco editors (the same editor code powering VS Code), side-by-side diff comparers, test runners, and comment feeds.
+- **Problem:** teams tweak system prompts in chats and text files, then can't say what changed between v2 and v3, or whether it still passes its tests. Hosting a prompt tool means a security review.
+- **What this does:** a prompt workspace with a Monaco editor, side-by-side version diffs, a test manager, comments and an audit trail. It stores everything as readable JSON in a OneDrive folder the team already shares.
+- **Result:** installs from one `.vsix` file and runs with zero servers, so it fits locked-down company laptops.
 
----
+## What it does
 
-## 2. Supported Workspaces
+| Feature | Details |
+| :--- | :--- |
+| Prompt editor | Monaco (the VS Code editor) with line numbers, word and character counts, download and fullscreen |
+| Version diff | Pick any two versions and see added and removed lines side by side |
+| Test manager | Record questions and expected outputs, mark actual outputs pass or fail, keep the history |
+| Review | Comments on each revision and a full audit trail: who changed what, and when it was promoted |
+| Two front doors | A VS Code sidebar, or a browser tab you can pin in Microsoft Teams |
 
-PromptVault is compiled to run in two environments, depending on your team's workflow:
-
-### Option A: VS Code Extension (Best for Developers)
-The entire application runs as a custom sidebar tab inside VS Code.
-* **How it works**: The extension runs locally on Node.js inside VS Code. It reads and writes directly to the JSON files inside your local synced OneDrive folder.
-* **Benefits**: No local servers to run, zero command prompt interactions, and access right next to your application code.
-* **Installation**: Install using the pre-compiled single file package: `promptvault-1.0.0.vsix`.
-
-### Option B: Standalone Web Tab (Best for Teams/Non-Developers)
-The application runs inside a web browser or embedded as a Website Tab at the top of a Microsoft Teams channel.
-* **How it works**: The React website loads in the browser. It prompts the user to select their local synced OneDrive folder. Once selected, the browser reads/writes files directly to that folder using the secure HTML5 File System Access API.
-* **Benefits**: Highly accessible to product managers, analysts, and stakeholders inside Microsoft Teams.
-
----
-
-## 3. How the OneDrive Sync Works
-
-No database server is hosted on the internet. Instead, your local workstations communicate via the OneDrive Cloud folder using the native OneDrive sync engine.
+## How it works
 
 ```mermaid
-graph TD
-    subgraph UserA ["User A (Lead Workstation)"]
-        UI1["React UI (Teams or VS Code)"] -->|Saves Prompt Revision| FS1["Local OneDrive Sync Folder"]
-    end
-
-    subgraph CorporateSync ["Corporate Cloud Sync"]
-        FS1 <-->|OneDrive Background Upload/Download| OC["OneDrive Cloud Folder"]
-        OC <-->|OneDrive Background Upload/Download| FS2["Local OneDrive Sync Folder"]
-    end
-
-    subgraph UserB ["User B (Member Workstation)"]
-        FS2 -->|Loads Updated Prompt JSON| UI2["React UI (Teams or VS Code)"]
-    end
+flowchart LR
+    A[VS Code extension] --> F[(Shared OneDrive folder · JSON files)]
+    B[Browser or Teams tab · File System Access API] --> F
+    F <-->|OneDrive sync| G[Teammates' machines]
 ```
 
----
+| Part | What it does |
+| :--- | :--- |
+| `vscode-extension/src/extension.ts` | Runs the UI in a VS Code webview and reads and writes the JSON files |
+| `frontend/src/services/api.ts` | One bridge: talks to the extension, the browser file API or the optional server |
+| `frontend/src/pages/` | Dashboard, editor, compare, activity log, search and settings |
+| `backend/` | Optional FastAPI server for a hosted setup |
 
-## 4. Key Features
+## Quickstart
 
-* **Monaco Prompt Editor**: Edit prompts with full line numbering, word count, character count, download options, and fullscreen capabilities.
-* **Version Diff Comparison**: Select any two versions of a prompt and view color-coded line differences side-by-side (green for additions, red for deletions).
-* **Interactive Test Manager**: Enter questions, log expected outputs, input actual outputs, mark them as PASS/FAIL, and track test history.
-* **Collaborative Comments**: Discuss version changes directly inside the revision feed.
-* **Audit Trail**: View a complete activity timeline of who created namespaces, who saved revisions, and when changes were promoted to production.
+**VS Code (no terminal needed):** Extensions → `…` → *Install from VSIX* → pick `promptvault-1.0.0.vsix`, then set *PromptVault: Database Path* to your shared OneDrive folder. Full walkthrough, including Teams: [SETUP_GUIDE.md](SETUP_GUIDE.md).
 
----
+**From source:**
 
-## 5. Repository File Layout
-
-```text
-PromptVault/
-├── promptvault-1.0.0.vsix  <-- VS Code Extension Installer (One-click install)
-├── README.md               <-- Main Project Documentation (This file)
-├── SETUP_GUIDE.md          <-- Step-by-Step Setup Guide (Windows/Teams/VSIX)
-│
-├── vscode-extension/       <-- VS Code Extension Source Workspace
-│   ├── src/
-│   │   └── extension.ts    <-- Extension entrypoint & Node.js file system engine
-│   └── package.json        <-- Configuration settings & command bindings
-│
-├── frontend/               <-- React Client Source Workspace
-│   ├── src/
-│   │   ├── pages/          <-- Dashboard, Editor, Diff, Settings views
-│   │   └── services/
-│   │       └── api.ts      <-- Bridge router (detects Webview vs standalone API)
-│   └── package.json        <-- Client dependencies
-│
-└── backend/                <-- FastAPI Python Server (Optional standalone web host)
+```bash
+cd frontend && npm install && npm run dev        # web UI
+cd vscode-extension && npm install && npm run compile
 ```
 
+## Design decisions
+
+- **Files, not a database.** JSON in OneDrive means no server, no new vendor and nothing for IT to approve, and every change is still readable by a person.
+- **One UI, two hosts.** The same React app runs inside VS Code and in a browser; a small bridge decides where to read and write.
+- **Tests live next to prompts.** Each prompt keeps its test cases and pass/fail history in the same place as its versions.
+
+## Limits & roadmap
+
+- [ ] Simultaneous edits rely on OneDrive's own conflict handling; an in-app merge view would be safer
+- [ ] Run test cases against a model automatically instead of pasting outputs by hand
+
 ---
 
-## 6. Setup Instructions
+<div align="center">
 
-For a step-by-step walkthrough of installing the VS Code Extension, sharing the OneDrive sync folder, and adding the app to Microsoft Teams, please follow:
+<a href="https://shlokbam.in"><img src=".github/assets/footer.svg" alt="Built by Shlok Bam" width="100%"></a>
 
-📄 [SETUP_GUIDE.md](SETUP_GUIDE.md)
+<a href="https://shlokbam.in">shlokbam.in</a> · <a href="https://www.linkedin.com/in/shlokbam/">LinkedIn</a> · <a href="https://github.com/shlokbam">More projects</a>
+
+</div>
